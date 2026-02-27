@@ -7,10 +7,11 @@ import userRoutes from "./routes/user.route";
 import farmerRoutes from "./routes/farmer.route";
 import offerRouter from "./routes/offer.router"
 import cors from "cors";
-
+import morgan from "morgan";
 
 const app = express();
 
+app.use(morgan("dev"));
 app.use(
 	cors({
 		origin: process.env.FRONTEND_URL,
