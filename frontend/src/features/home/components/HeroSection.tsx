@@ -1,6 +1,9 @@
-import { ArrowRight, ShoppingCart, Truck, Users, Handshake, Bot, BadgeCheck, Calculator } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
+import { useState } from 'react'
+import { ArrowRight, ShoppingCart, Truck, Users, Handshake, Bot, BadgeCheck, Calculator, Loader2, AlertCircle } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import farmersImg from '@/assets/kerala_farmers_foreground.png'
+import { farmerService } from '@/services/api'
+import { farmerStore } from '@/store/farmerStore'
 
 /* ─── Floating glass chip ─────────────────────────────────────────────────── */
 interface ChipProps {
@@ -46,6 +49,25 @@ function StoryCard({ Icon, iconColor, iconBg, title, desc }: StoryCardProps) {
 
 /* ─── Hero Section ────────────────────────────────────────────────────────── */
 export function HeroSection() {
+    const navigate = useNavigate()
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    async function handleStartAsFarmer() {
+        setLoading(true)
+        setError(null)
+        try {
+            const farmers = await farmerService.getAll()
+            if (!farmers || farmers.length === 0) throw new Error('No farmer records found in database.')
+            farmerStore.save(farmers[0])   // mock: auto-login as first farmer
+            await navigate({ to: '/dashboard' })
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Could not reach the server. Is the backend running?')
+        } finally {
+            setLoading(false)
+        }
+    }
+
     return (
         <>
             {/* ══ HERO ══════════════════════════════════════════════════════ */}
@@ -110,28 +132,45 @@ export function HeroSection() {
                         </p>
 
                         {/* CTAs */}
-                        <div className="flex flex-wrap gap-3">
-                            {/* Primary — navigate to farmer dashboard */}
-                            <Link
-                                to="/dashboard"
-                                className="group inline-flex items-center gap-2.5 rounded-full px-7 py-3.5 text-sm font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98] no-underline"
-                                style={{
-                                    background: 'linear-gradient(135deg, #16a34a, #22c55e)',
-                                    boxShadow: '0 6px 24px rgba(34,197,94,0.40)',
-                                }}
-                            >
-                                Start as Farmer
-                                <ArrowRight
-                                    size={16}
-                                    className="transition-transform duration-300 group-hover:translate-x-1"
-                                />
-                            </Link>
+                        <div className="flex flex-col gap-3">
+                            <div className="flex flex-wrap gap-3">
+                                {/* Primary — fetch farmer → store → navigate */}
+                                <button
+                                    onClick={handleStartAsFarmer}
+                                    disabled={loading}
+                                    className="group inline-flex items-center gap-2.5 rounded-full px-7 py-3.5 text-sm font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                                    style={{
+                                        background: 'linear-gradient(135deg, #16a34a, #22c55e)',
+                                        boxShadow: '0 6px 24px rgba(34,197,94,0.40)',
+                                    }}
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Loader2 size={16} className="animate-spin" />
+                                            Connecting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Start as Farmer
+                                            <ArrowRight size={16} className="transition-transform duration-300 group-hover:translate-x-1" />
+                                        </>
+                                    )}
+                                </button>
 
-                            {/* Secondary */}
-                            <button className="inline-flex items-center gap-2.5 rounded-full border-2 border-green-200 bg-white px-7 py-3.5 text-sm font-semibold text-green-700 transition-all duration-300 hover:border-green-400 hover:bg-green-50 hover:-translate-y-0.5 active:scale-[0.98]">
-                                <ShoppingCart size={15} />
-                                Explore Marketplace
-                            </button>
+                                {/* Secondary */}
+                                <button className="inline-flex items-center gap-2.5 rounded-full border-2 border-green-200 bg-white px-7 py-3.5 text-sm font-semibold text-green-700 transition-all duration-300 hover:border-green-400 hover:bg-green-50 hover:-translate-y-0.5 active:scale-[0.98]">
+                                    <ShoppingCart size={15} />
+                                    Explore Marketplace
+                                </button>
+                            </div>
+
+                            {/* Error state */}
+                            {error && (
+                                <div className="flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-xs text-red-600">
+                                    <AlertCircle size={13} className="shrink-0" />
+                                    {error}
+                                </div>
+                            )}
                         </div>
 
                         {/* Social proof strip */}
