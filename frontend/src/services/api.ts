@@ -71,3 +71,60 @@ export const farmerService = {
         return res.data
     },
 }
+
+// --- Negotiation API ---
+
+export interface Message {
+    id: string
+    role: 'ai' | 'buyer'
+    text: string
+    timestamp: string
+}
+
+export interface Negotiation {
+    _id: string
+    crop: {
+        crop: string
+    }
+    currentPrice: number
+    quantity: number
+    status: string
+}
+
+interface MessagesResponse {
+    success: boolean
+    data: Message[]
+}
+
+interface NegotiationResponse {
+    success: boolean
+    data: Negotiation
+}
+
+interface SendMessageResponse {
+    success: boolean
+    data: Message
+}
+
+export const negotiationService = {
+    /** GET /api/v1/negotiations/:id/messages */
+    getMessages: async (negotiationId: string): Promise<Message[]> => {
+        const res = await request<MessagesResponse>(`/negotiations/${negotiationId}/messages`)
+        return res.data
+    },
+
+    /** GET /api/v1/negotiations/:id */
+    getById: async (negotiationId: string): Promise<Negotiation> => {
+        const res = await request<NegotiationResponse>(`/negotiations/${negotiationId}`)
+        return res.data
+    },
+
+    /** POST /api/v1/negotiations/:id/messages */
+    sendMessage: async (negotiationId: string, text: string): Promise<Message> => {
+        const res = await request<SendMessageResponse>(`/negotiations/${negotiationId}/messages`, {
+            method: 'POST',
+            body: JSON.stringify({ text }),
+        })
+        return res.data
+    },
+}
