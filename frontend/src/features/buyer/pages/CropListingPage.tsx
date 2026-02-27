@@ -1,107 +1,12 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { CropCard } from '@/features/buyer/components/CropCard'
 import { PlaceBidModal } from '@/features/buyer/components/PlaceBidModal'
 import { SuccessToast } from '@/features/buyer/components/SuccessToast'
 import { Sidebar } from '@/features/buyer/components/Sidebar'
+import { farmerService } from '@/services/api'
 
-const CROPS = [
-    {
-        id: 1,
-        name: 'Premium Wayanad Pepper',
-        variety: 'Malabar Black Pepper',
-        location: 'Wayanad, Kerala',
-        quantity: '500 kg',
-        priceRange: '₹480 - ₹560',
-        farmer: 'Rajan Kumar',
-        rating: 4.8,
-        image: 'https://images.unsplash.com/photo-1599940824399-b87987ceb72a?w=400&h=300&fit=crop',
-        tags: ['Organic', 'Premium'],
-    },
-    {
-        id: 2,
-        name: 'Idukki Cardamom',
-        variety: 'Elettaria Cardamomum',
-        location: 'Idukki, Kerala',
-        quantity: '200 kg',
-        priceRange: '₹1,200 - ₹1,450',
-        farmer: 'Suresh Menon',
-        rating: 4.9,
-        image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=400&h=300&fit=crop',
-        tags: ['Grade A', 'Export'],
-    },
-    {
-        id: 3,
-        name: 'Wayanad Robusta Coffee',
-        variety: 'Robusta Cherry AB',
-        location: 'Wayanad, Kerala',
-        quantity: '1,000 kg',
-        priceRange: '₹220 - ₹280',
-        farmer: 'Priya Nair',
-        rating: 4.5,
-        image: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=400&h=300&fit=crop',
-        tags: ['Fair Trade'],
-    },
-    {
-        id: 4,
-        name: 'Kerala Red Rice',
-        variety: 'Matta Rice (Palakkadan)',
-        location: 'Palakkad, Kerala',
-        quantity: '2,000 kg',
-        priceRange: '₹65 - ₹85',
-        farmer: 'Vijay Krishnan',
-        rating: 4.6,
-        image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=300&fit=crop',
-        tags: ['Traditional', 'GI Tagged'],
-    },
-    {
-        id: 5,
-        name: 'Wayanad Vanilla',
-        variety: 'Planifolia',
-        location: 'Wayanad, Kerala',
-        quantity: '50 kg',
-        priceRange: '₹25,000 - ₹35,000',
-        farmer: 'Lakshmi Devi',
-        rating: 4.7,
-        image: 'https://images.unsplash.com/photo-1631209121750-a9f656d30ce6?w=400&h=300&fit=crop',
-        tags: ['Rare', 'Premium'],
-    },
-    {
-        id: 6,
-        name: 'Kannur Coconut',
-        variety: 'West Coast Tall',
-        location: 'Kannur, Kerala',
-        quantity: '5,000 units',
-        priceRange: '₹18 - ₹25',
-        farmer: 'Mohan Das',
-        rating: 4.3,
-        image: 'https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=400&h=300&fit=crop',
-        tags: ['Bulk'],
-    },
-    {
-        id: 7,
-        name: 'Kottayam Rubber',
-        variety: 'RRII 105',
-        location: 'Kottayam, Kerala',
-        quantity: '800 kg',
-        priceRange: '₹155 - ₹180',
-        farmer: 'Thomas Cherian',
-        rating: 4.4,
-        image: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=300&fit=crop',
-        tags: ['Industrial'],
-    },
-    {
-        id: 8,
-        name: 'Thrissur Turmeric',
-        variety: 'Lakadong',
-        location: 'Thrissur, Kerala',
-        quantity: '300 kg',
-        priceRange: '₹120 - ₹160',
-        farmer: 'Anitha Balan',
-        rating: 4.6,
-        image: 'https://images.unsplash.com/photo-1615485500704-8e990f9900f7?w=400&h=300&fit=crop',
-        tags: ['Organic', 'Medicinal'],
-    },
-]
+const TOMATO_IMAGE = 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&h=300&fit=crop'
 
 const DISTRICTS = ['All Districts', 'Wayanad', 'Idukki', 'Palakkad', 'Kannur', 'Kottayam', 'Thrissur']
 
@@ -109,20 +14,43 @@ export function CropListingPage() {
     const [activeDistrict, setActiveDistrict] = useState('All Districts')
     const [searchQuery, setSearchQuery] = useState('')
     const [bidModalOpen, setBidModalOpen] = useState(false)
-    const [selectedCrop, setSelectedCrop] = useState<(typeof CROPS)[0] | null>(null)
+    const [selectedCrop, setSelectedCrop] = useState<any | null>(null)
     const [showToast, setShowToast] = useState(false)
 
-    const filteredCrops = CROPS.filter((crop) => {
-        const matchesDistrict =
-            activeDistrict === 'All Districts' || crop.location.includes(activeDistrict)
-        const matchesSearch =
-            !searchQuery ||
-            crop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            crop.variety.toLowerCase().includes(searchQuery.toLowerCase())
-        return matchesDistrict && matchesSearch
+    const { data: rawCrops, isLoading, isError, error } = useQuery({
+        queryKey: ['crops'],
+        queryFn: farmerService.getallCrops,
     })
 
-    const handlePlaceBid = useCallback((crop: (typeof CROPS)[0]) => {
+    const crops = useMemo(() => {
+        if (!rawCrops) return []
+        return rawCrops.map((crop) => ({
+            id: crop._id,
+            name: crop.crop,
+            variety: 'Fresh Produce', // Backend doesn't provide variety yet
+            location: `${crop.location.lat.toFixed(2)}, ${crop.location.lon.toFixed(2)}`, // Coordinates as location string
+            quantity: `${crop.quantity} kg`,
+            priceRange: `₹${crop.reservedPrice} - ₹${crop.finalPrice || crop.reservedPrice + 10}`,
+            farmer: `Farmer ${crop.farmerId}`,
+            rating: 4.5,
+            image: TOMATO_IMAGE,
+            tags: crop.isSold ? ['Sold'] : ['Available'],
+        }))
+    }, [rawCrops])
+
+    const filteredCrops = useMemo(() => {
+        return crops.filter((crop) => {
+            const matchesDistrict =
+                activeDistrict === 'All Districts' || crop.location.includes(activeDistrict)
+            const matchesSearch =
+                !searchQuery ||
+                crop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                crop.variety.toLowerCase().includes(searchQuery.toLowerCase())
+            return matchesDistrict && matchesSearch
+        })
+    }, [crops, activeDistrict, searchQuery])
+
+    const handlePlaceBid = useCallback((crop: any) => {
         setSelectedCrop(crop)
         setBidModalOpen(true)
     }, [])
@@ -134,6 +62,35 @@ export function CropListingPage() {
     const handleCloseToast = useCallback(() => {
         setShowToast(false)
     }, [])
+
+    if (isLoading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-gray-50">
+                <div className="text-center">
+                    <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-green-500 border-t-transparent mx-auto"></div>
+                    <p className="text-gray-500">Loading fresh crops...</p>
+                </div>
+            </div>
+        )
+    }
+
+    if (isError) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-gray-50">
+                <div className="text-center">
+                    <span className="mb-3 block text-4xl">⚠️</span>
+                    <h3 className="text-lg font-semibold text-gray-700">Failed to load crops</h3>
+                    <p className="mt-1 text-sm text-gray-400">{(error as Error).message}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="mt-4 rounded-lg bg-green-500 px-4 py-2 text-white hover:bg-green-600"
+                    >
+                        Retry
+                    </button>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="flex h-screen bg-gray-50">
