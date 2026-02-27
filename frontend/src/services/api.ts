@@ -1,7 +1,7 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1'
-// Farmer routes live at /api/farmer — separate prefix from /api/v1
-const FARMER_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1')
-    .replace('/api/v1', '/api/farmer')
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api'
+// Farmer routes live at /api/farmer — separate prefix from /api
+const FARMER_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api')
+    .replace('/api', '/api/farmer')
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -17,11 +17,7 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
         throw new Error(error || `HTTP error ${response.status}`)
     }
 
-    const result = (await response.json()) as BackendResponse<T>
-    if (!result.success) {
-        throw new Error(result.message || 'API request failed')
-    }
-    return result.data
+    return response.json() as Promise<T>
 }
 
 async function farmerRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -54,40 +50,6 @@ export interface Crop {
     updatedAt: string
 }
 
-// --- Negotiation API ---
-
-export interface Message {
-    id: string
-    negotiationId: string
-    role: 'buyer' | 'ai'
-    text: string
-    timestamp: string
-}
-
-export interface Negotiation {
-    id: string
-    cropId: string
-    buyerId: string
-    status: 'active' | 'completed' | 'cancelled'
-    currentPrice: number
-    quantity: number
-    crop: Crop
-}
-
-export const negotiationService = {
-    getById: (id: string): Promise<Negotiation> => request<Negotiation>(`/negotiations/${id}`),
-    getMessages: (id: string): Promise<Message[]> => request<Message[]>(`/negotiations/${id}/messages`),
-    sendMessage: (id: string, text: string): Promise<Message> =>
-        request<Message>(`/negotiations/${id}/messages`, {
-            method: 'POST',
-            body: JSON.stringify({ text }),
-        }),
-}
-
-export const farmerService = {
-    getallCrops: (): Promise<Crop[]> => request<Crop[]>('/farmer/get-crops'),
-}
-
 export const cropsService = {
     getAll: (): Promise<Crop[]> => request<Crop[]>('/crops'),
     getById: (id: string): Promise<Crop> => request<Crop>(`/crops/${id}`),
@@ -110,10 +72,76 @@ interface FarmerListResponse {
     data: Farmer[]
 }
 
+interface FarmerCropsResponse {
+    success: boolean
+    data: Crop[]
+}
+
 export const farmerService = {
+    getallCrops: async (): Promise<Crop[]> => {
+        const res = await request<FarmerCropsResponse>('/farmer/get-crops')
+        return res.data
+    },
     /** GET /api/farmer/get-farmer — returns all farmers */
     getAll: async (): Promise<Farmer[]> => {
         const res = await farmerRequest<FarmerListResponse>('/get-farmer')
+        return res.data
+    },
+}
+
+// --- Negotiation API ---
+
+export interface Message {
+    id: string
+    role: 'ai' | 'buyer'
+    text: string
+    timestamp: string
+}
+
+export interface Negotiation {
+    _id: string
+    crop: {
+        crop: string
+    }
+    currentPrice: number
+    quantity: number
+    status: string
+}
+
+interface MessagesResponse {
+    success: boolean
+    data: Message[]
+}
+
+interface NegotiationResponse {
+    success: boolean
+    data: Negotiation
+}
+
+interface SendMessageResponse {
+    success: boolean
+    data: Message
+}
+
+export const negotiationService = {
+    /** GET /api/v1/negotiations/:id/messages */
+    getMessages: async (negotiationId: string): Promise<Message[]> => {
+        const res = await request<MessagesResponse>(`/negotiations/${negotiationId}/messages`)
+        return res.data
+    },
+
+    /** GET /api/v1/negotiations/:id */
+    getById: async (negotiationId: string): Promise<Negotiation> => {
+        const res = await request<NegotiationResponse>(`/negotiations/${negotiationId}`)
+        return res.data
+    },
+
+    /** POST /api/v1/negotiations/:id/messages */
+    sendMessage: async (negotiationId: string, text: string): Promise<Message> => {
+        const res = await request<SendMessageResponse>(`/negotiations/${negotiationId}/messages`, {
+            method: 'POST',
+            body: JSON.stringify({ text }),
+        })
         return res.data
     },
 }
