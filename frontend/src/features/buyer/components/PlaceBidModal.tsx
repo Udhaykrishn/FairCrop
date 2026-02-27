@@ -76,11 +76,11 @@ export function PlaceBidModal({
             onSubmit()
             onClose()
 
-            // The backend returns { success: true, message: "...", data: offer }
+            // The backend returns { success: true, message: "...", data: { negotiationId, ... } }
             // offerService.create returns res.data
-            const negotiationId = res._id || res.id
+            const negotiationId = res.negotiationId || res._id || res.id
             if (!negotiationId) {
-                console.warn('No offer ID returned, staying on page')
+                console.warn('No negotiation ID returned, staying on page')
                 return
             }
 

@@ -124,25 +124,47 @@ interface SendMessageResponse {
 }
 
 export const negotiationService = {
-    /** GET /api/v1/negotiations/:id/messages */
+    /** GET /api/negotiations/:id/messages */
     getMessages: async (negotiationId: string): Promise<Message[]> => {
-        const res = await request<MessagesResponse>(`/v1/negotiations/${negotiationId}/messages`)
-        return res.data
+        const res = await request<MessagesResponse>(`/negotiations/${negotiationId}/messages`)
+        // Map backend ChatMessage to frontend Message
+        return (res.data as any[]).map((msg: any, idx: number) => ({
+            id: msg.id || `${idx}`,
+            role: msg.role === 'user' ? 'buyer' : 'ai',
+            text: msg.content,
+            timestamp: msg.timestamp || new Date().toISOString()
+        }))
     },
 
-    /** GET /api/v1/negotiations/:id */
+    /** GET /api/negotiations/:id */
     getById: async (negotiationId: string): Promise<Negotiation> => {
-        const res = await request<NegotiationResponse>(`/v1/negotiations/${negotiationId}`)
-        return res.data
+        const res = await request<NegotiationResponse>(`/negotiations/${negotiationId}`)
+        const data = res.data as any
+        return {
+            _id: negotiationId,
+            crop: { crop: data.cropDetails?.crop || 'Unknown' },
+            currentPrice: data.currentPrice || 0,
+            quantity: data.cropDetails?.quantity || 0,
+            status: data.status || 'active'
+        }
     },
 
-    /** POST /api/v1/negotiations/:id/messages */
+    /** POST /api/negotiations/:id/messages */
     sendMessage: async (negotiationId: string, text: string): Promise<Message> => {
-        const res = await request<SendMessageResponse>(`/v1/negotiations/${negotiationId}/messages`, {
+        const res = await request<SendMessageResponse>(`/negotiations/${negotiationId}/messages`, {
             method: 'POST',
-            body: JSON.stringify({ text }),
+            body: JSON.stringify({ message: text }), // Backend uses 'message' field
         })
-        return res.data
+        const data = res.data as any
+        // Backend returns the full updated session or the last message
+        // Based on NegotiatonController, it returns updatedSession
+        const lastMsg = data.messages[data.messages.length - 1]
+        return {
+            id: lastMsg.id || `${Date.now()}`,
+            role: lastMsg.role === 'user' ? 'buyer' : 'ai',
+            text: lastMsg.content,
+            timestamp: lastMsg.timestamp || new Date().toISOString()
+        }
     },
 }
 
@@ -156,7 +178,7 @@ interface OfferResponse {
 
 export const offerService = {
     create: async (data: any): Promise<any> => {
-        const res = await request<OfferResponse>('/v1/offers', {
+        const res = await request<OfferResponse>('/offers', {
             method: 'POST',
             body: JSON.stringify(data),
         })
