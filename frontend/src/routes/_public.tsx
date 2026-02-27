@@ -1,7 +1,7 @@
-import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { RootLayout } from '@/app/layout/RootLayout'
 
-export const rootRoute = createRootRoute({
+export const Route = createFileRoute('/_public')({
     component: () => (
         <RootLayout>
             <Outlet />
