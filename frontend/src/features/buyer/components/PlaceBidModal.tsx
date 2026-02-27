@@ -9,7 +9,7 @@ interface PlaceBidModalProps {
     cropName?: string
     cropId?: string
     quantity?: number
-    location?: { lat: number; lon: number }
+    location?: string
 }
 
 export function PlaceBidModal({
@@ -19,7 +19,6 @@ export function PlaceBidModal({
     cropName = 'Premium Wayanad Pepper',
     cropId = 'crop_001',
     quantity = 0,
-    location = { lat: 0, lon: 0 }
 }: PlaceBidModalProps) {
     const [district, setDistrict] = useState('')
     const [price, setPrice] = useState('')
@@ -59,15 +58,13 @@ export function PlaceBidModal({
         try {
             // Ensure location is in the format the backend expects {lat, lon}
             // even if it was passed as a string from the parent
-            const locationPayload = (location && typeof location === 'object' && 'lat' in location)
-                ? location
-                : { lat: 0, lon: 0 }
 
             const payload: any = {
                 cropId,
                 quantity: requestedQty,
                 price: Number(price),
-                location: locationPayload
+                location: district || 'Wayanad', // Use district state instead of empty location prop
+                buyerId: '69a18a7638a825ded1332681' // Placeholder buyer ID
             }
 
             const res = await offerService.create(payload)
