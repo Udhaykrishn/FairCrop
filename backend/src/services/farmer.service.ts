@@ -47,4 +47,22 @@ export class FarmerService {
     public async getCropsByFarmer(farmerId: string): Promise<ICrop[]> {
         return await Crop.find({ farmerId }).sort({ createdAt: -1 });
     }
+
+    public async updateFinalPrice(cropId: string, finalPrice: number): Promise<ICrop> {
+        if (finalPrice < 0) {
+            throw new Error("Final price cannot be negative.");
+        }
+
+        const updated = await Crop.findByIdAndUpdate(
+            cropId,
+            { finalPrice },
+            { new: true, runValidators: true }
+        );
+
+        if (!updated) {
+            throw new Error(`Crop with ID "${cropId}" not found.`);
+        }
+
+        return updated;
+    }
 }

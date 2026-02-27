@@ -14,4 +14,7 @@ router.get("/get-farmer", (req, res) => farmerController.getFarmers(req, res));
 // GET /api/farmer/:farmerId  — get all crops for a farmer
 router.get("/:farmerId", (req, res) => farmerController.getCropsByFarmer(req, res));
 
+// PATCH /api/farmer/update-price/:cropId  — update the final price of a crop
+router.patch("/update-price/:cropId", (req, res) => farmerController.updateFinalPrice(req, res));
+
 export default router;

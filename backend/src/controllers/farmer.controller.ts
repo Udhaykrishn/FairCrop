@@ -37,4 +37,20 @@ export class FarmerController {
             return sendResponse(res, STATUS_CODES.INTERNAL_SERVER_ERROR, false, MESSAGES.INTERNAL_SERVER_ERROR, null, error.message);
         }
     }
+
+    public async updateFinalPrice(req: Request, res: Response) {
+        try {
+            const cropId = req.params.cropId as string;
+            const { finalPrice } = req.body;
+
+            if (finalPrice === undefined || finalPrice === null) {
+                return sendResponse(res, STATUS_CODES.BAD_REQUEST, false, "finalPrice is required in the request body.");
+            }
+
+            const updated = await this.farmerService.updateFinalPrice(cropId, Number(finalPrice));
+            return sendResponse(res, STATUS_CODES.OK, true, "Final price updated successfully", updated);
+        } catch (error: any) {
+            return sendResponse(res, STATUS_CODES.INTERNAL_SERVER_ERROR, false, MESSAGES.INTERNAL_SERVER_ERROR, null, error.message);
+        }
+    }
 }
