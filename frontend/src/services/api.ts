@@ -7,7 +7,7 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         headers: {
             'Content-Type': 'application/json',
-            ...options?.headers,
+            ...(options?.headers as Record<string, string>),
         },
         ...options,
     })
@@ -22,7 +22,7 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
 async function farmerRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${FARMER_BASE_URL}${endpoint}`, {
-        headers: { 'Content-Type': 'application/json', ...options?.headers },
+        headers: { 'Content-Type': 'application/json', ...(options?.headers as Record<string, string>) },
         ...options,
     })
     if (!response.ok) {
@@ -126,21 +126,39 @@ interface SendMessageResponse {
 export const negotiationService = {
     /** GET /api/v1/negotiations/:id/messages */
     getMessages: async (negotiationId: string): Promise<Message[]> => {
-        const res = await request<MessagesResponse>(`/negotiations/${negotiationId}/messages`)
+        const res = await request<MessagesResponse>(`/v1/negotiations/${negotiationId}/messages`)
         return res.data
     },
 
     /** GET /api/v1/negotiations/:id */
     getById: async (negotiationId: string): Promise<Negotiation> => {
-        const res = await request<NegotiationResponse>(`/negotiations/${negotiationId}`)
+        const res = await request<NegotiationResponse>(`/v1/negotiations/${negotiationId}`)
         return res.data
     },
 
     /** POST /api/v1/negotiations/:id/messages */
     sendMessage: async (negotiationId: string, text: string): Promise<Message> => {
-        const res = await request<SendMessageResponse>(`/negotiations/${negotiationId}/messages`, {
+        const res = await request<SendMessageResponse>(`/v1/negotiations/${negotiationId}/messages`, {
             method: 'POST',
             body: JSON.stringify({ text }),
+        })
+        return res.data
+    },
+}
+
+// --- Offer API ---
+
+interface OfferResponse {
+    success: boolean
+    message: string
+    data: any
+}
+
+export const offerService = {
+    create: async (data: any): Promise<any> => {
+        const res = await request<OfferResponse>('/v1/offers', {
+            method: 'POST',
+            body: JSON.stringify(data),
         })
         return res.data
     },

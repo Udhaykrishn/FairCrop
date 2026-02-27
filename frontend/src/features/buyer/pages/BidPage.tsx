@@ -1,8 +1,17 @@
 import { useState, useCallback } from 'react'
+import { useSearch } from '@tanstack/react-router'
 import { PlaceBidModal } from '@/features/buyer/components/PlaceBidModal'
 import { SuccessToast } from '@/features/buyer/components/SuccessToast'
 
 export function BidPage() {
+    const search = useSearch({ from: '/buyer/bid' }) as {
+        cropId?: string
+        cropName?: string
+        quantity?: number
+        lat?: number
+        lon?: number
+    }
+
     const [isModalOpen, setIsModalOpen] = useState(true)
     const [showToast, setShowToast] = useState(false)
 
@@ -44,6 +53,10 @@ export function BidPage() {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onSubmit={handleBidSubmit}
+                cropId={search.cropId}
+                cropName={search.cropName}
+                quantity={search.quantity}
+                location={search.lat && search.lon ? { lat: search.lat, lon: search.lon } : undefined}
             />
 
             {/* Reopen button when modal is closed */}

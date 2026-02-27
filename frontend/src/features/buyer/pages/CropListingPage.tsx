@@ -28,7 +28,13 @@ export function CropListingPage() {
             id: crop._id,
             name: crop.crop,
             variety: 'Fresh Produce', // Backend doesn't provide variety yet
-            location: `${crop.location.lat.toFixed(2)}, ${crop.location.lon.toFixed(2)}`, // Coordinates as location string
+            location: crop.location
+                ? typeof crop.location === 'string'
+                    ? crop.location
+                    : (crop.location.lat !== undefined && crop.location.lon !== undefined)
+                        ? `${crop.location.lat.toFixed(2)}, ${crop.location.lon.toFixed(2)}`
+                        : 'Invalid location'
+                : 'N/A', // Handle different location formats
             quantity: `${crop.quantity} kg`,
             priceRange: `₹${crop.reservedPrice} - ₹${crop.finalPrice || crop.reservedPrice + 10}`,
             farmer: `Farmer ${crop.farmerId}`,
@@ -187,7 +193,8 @@ export function CropListingPage() {
                 onSubmit={handleBidSubmit}
                 cropName={selectedCrop?.name}
                 cropId={selectedCrop ? String(selectedCrop.id) : undefined}
-                totalQuantity={selectedCrop?.quantity}
+                quantity={rawCrops?.find(c => c._id === selectedCrop?.id)?.quantity}
+                location={rawCrops?.find(c => c._id === selectedCrop?.id)?.location}
             />
 
             {/* Success Toast */}
