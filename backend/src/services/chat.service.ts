@@ -4,6 +4,7 @@ import redisClient from "../config/redis.config";
 import type { SendMessageDto } from "../dtos/chat.dto";
 import { CHAT_TYPES } from "../types/chat.type";
 import type { AiService } from "./ai.service";
+import { emitToChatRoom } from "../socket/socket.gateway";
 
 export interface ChatMessage {
     role: "user" | "ai";
@@ -65,6 +66,13 @@ export class ChatService {
             JSON.stringify(sessionData),
         );
 
+        // Notify room clients about user's message
+        emitToChatRoom(sessionId, "chat:message", {
+            sessionId,
+            message: userMsg,
+            updatedSession: sessionData
+        });
+
         const aiResponseContent = await this._aiService.generateResponse(
             dto.message,
             sessionData.messages,
@@ -91,6 +99,13 @@ export class ChatService {
                 this.SESSION_EXPIRY,
                 JSON.stringify(sessionData),
             );
+
+            // Notify room clients about AI's message
+            emitToChatRoom(sessionId, "chat:message", {
+                sessionId,
+                message: aiMsg,
+                updatedSession: sessionData
+            });
         } catch (err) {
             console.error("Error saving chat history to Redis:", err);
         }
