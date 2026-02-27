@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import {
     Search,
     Mic,
@@ -10,7 +11,11 @@ import {
     ChevronDown,
     Sparkles,
     Sprout,
+    Phone,
+    LogOut,
 } from 'lucide-react'
+import { farmerStore } from '@/store/farmerStore'
+import type { Farmer } from '@/services/api'
 
 const BRAND = '#17CF45'
 
@@ -20,8 +25,20 @@ const CROPS = [
 ]
 
 export function FarmerDashboard() {
+    const navigate = useNavigate()
     const [crop, setCrop] = useState('Tomato')
     const [quantity, setQuantity] = useState('')
+    const [farmer, setFarmer] = useState<Farmer | null>(null)
+
+    useEffect(() => {
+        const stored = farmerStore.load()
+        if (!stored) {
+            // No session — send back to landing
+            navigate({ to: '/' })
+            return
+        }
+        setFarmer(stored)
+    }, [])
 
     return (
         <div className="mx-auto max-w-7xl px-6 py-8">
@@ -36,12 +53,34 @@ export function FarmerDashboard() {
                             <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ backgroundColor: BRAND }} />
                             Live market data · Kerala
                         </div>
-                        <h1 className="text-4xl font-bold tracking-tight text-gray-900">
-                            Hello Farmer 👋
-                        </h1>
-                        <p className="mt-2 text-base font-normal text-gray-500">
-                            Sell your crops at the best market price in Kerala
-                        </p>
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <h1 className="text-4xl font-bold tracking-tight text-gray-900">
+                                    Hello, {farmer?.name ?? 'Farmer'} 👋
+                                </h1>
+                                {farmer?.phone && (
+                                    <div className="mt-1.5 flex items-center gap-1.5 text-sm text-gray-400">
+                                        <Phone size={12} />
+                                        <span>{farmer.phone}</span>
+                                        <span className="ml-1 inline-flex items-center gap-1 text-xs font-semibold" style={{ color: BRAND }}>
+                                            <CheckCircle2 size={11} />
+                                            Verified
+                                        </span>
+                                    </div>
+                                )}
+                                <p className="mt-2 text-base font-normal text-gray-500">
+                                    Sell your crops at the best market price in Kerala
+                                </p>
+                            </div>
+                            {/* Logout */}
+                            <button
+                                onClick={() => { farmerStore.clear(); navigate({ to: '/' }) }}
+                                className="flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-500"
+                            >
+                                <LogOut size={12} />
+                                Sign out
+                            </button>
+                        </div>
                     </div>
 
                     {/* Crop Input Card */}
