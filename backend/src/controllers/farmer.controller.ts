@@ -28,4 +28,13 @@ export class FarmerController {
             return sendResponse(res, STATUS_CODES.INTERNAL_SERVER_ERROR, false, MESSAGES.INTERNAL_SERVER_ERROR, null, error.message);
         }
     }
+
+    public async getFarmers(req: Request, res: Response) {
+        try {
+            const farmers = await this.farmerService.getFarmers();
+            return sendResponse(res, STATUS_CODES.OK, true, "Farmers fetched successfully", farmers);
+        } catch (error: any) {
+            return sendResponse(res, STATUS_CODES.INTERNAL_SERVER_ERROR, false, MESSAGES.INTERNAL_SERVER_ERROR, null, error.message);
+        }
+    }
 }
