@@ -46,27 +46,27 @@ export class ChatService {
         }
 
         // Fetch negotiation context from DB if not already stored in session
-        // sessionId is generally passed as the cropId for initial negotiations
         if (!sessionData.crop) {
             try {
-                const crop = await Crop.findById(sessionId);
+                // The sessionId is the Offer ID (negotiationId) from the new API contract
+                const offer = await Offer.findById(sessionId);
+                let cropId = sessionId; // Fallback
+
+                if (offer) {
+                    cropId = offer.cropId;
+                    sessionData.offer_price = offer.price;
+                    sessionData.buyer_district = offer.buyer_location;
+                }
+
+                const crop = await Crop.findById(cropId);
                 if (crop) {
                     sessionData.crop = crop.crop;
                     sessionData.quantity = crop.quantity;
                     sessionData.reserve_price = crop.reservedPrice;
                     sessionData.farmer_location = crop.location as unknown as string;
 
-                    if (crop.pendingOffer) {
+                    if (crop.pendingOffer && !sessionData.offer_price) {
                         sessionData.offer_price = crop.pendingOffer.offeredPrice;
-                    }
-
-                    // Look for any existing offer to get buyer location context
-                    const offer = (await Offer.findOne({ cropId: sessionId }).sort({
-                        createdAt: -1,
-                    })) as IOffer | null;
-                    if (offer) {
-                        sessionData.buyer_district = offer.buyer_location;
-                        if (!sessionData.offer_price) sessionData.offer_price = offer.price;
                     }
                 }
             } catch (err) {
@@ -141,18 +141,17 @@ export class ChatService {
             if (aiResponse.decision) {
                 const decisionStatus = aiResponse.decision.status;
                 if (decisionStatus === "accepted" || decisionStatus === "rejected") {
-                    const crop = await Crop.findById(sessionId);
-                    if (crop && crop.pendingOffer) {
-                        crop.pendingOffer.status = decisionStatus === "accepted" ? "confirmed" : "rejected";
-                        if (decisionStatus === "accepted") {
-                            // Find the specific offer to get the quantity being dealed
-                            const offer = await Offer.findOne({
-                                cropId: sessionId,
-                                buyerId: crop.pendingOffer.buyerId,
-                                status: "pending"
-                            }).sort({ createdAt: -1 });
+                    // We need to resolve the correct cropId from the negotiation (sessionId)
+                    const offer = await Offer.findById(sessionId).populate<{ cropId: any }>("cropId");
 
-                            if (offer) {
+                    if (offer && offer.cropId) {
+                        const crop = await Crop.findById(offer.cropId._id);
+
+                        if (crop && crop.pendingOffer) {
+                            // Update Crop status
+                            crop.pendingOffer.status = decisionStatus === "accepted" ? "confirmed" : "rejected";
+
+                            if (decisionStatus === "accepted") {
                                 // Subtract dealed kg from crop quantity
                                 crop.quantity = Math.max(0, crop.quantity - offer.quantity);
                                 crop.finalPrice = aiResponse.decision.counterPrice;
@@ -162,39 +161,30 @@ export class ChatService {
                                     crop.isSold = true;
                                 }
 
-                                console.log(`[Deal] Updated crop ${sessionId}: ${offer.quantity}kg sold, ${crop.quantity}kg remaining`);
+                                console.log(`[Deal] Updated crop ${crop._id}: ${offer.quantity}kg sold, ${crop.quantity}kg remaining`);
                             }
+                            await crop.save();
+
+                            // Update the specific Offer (negotiation) status in DB
+                            offer.status = decisionStatus === "accepted" ? "accepted" : "rejected";
+                            offer.price = aiResponse.decision.counterPrice;
+                            await offer.save();
+
+                            // Notify Farmer via WebSocket
+                            emitNotification(crop.farmerId, "farmer:notification", {
+                                type: `OFFER_${decisionStatus.toUpperCase()}`,
+                                message: `The agent has ${decisionStatus} a deal for your ${crop.crop} at ₹${aiResponse.decision.counterPrice}`,
+                                data: {
+                                    cropId: crop._id,
+                                    status: decisionStatus,
+                                    price: aiResponse.decision.counterPrice,
+                                    cropName: crop.crop,
+                                    buyerId: offer.buyerId
+                                }
+                            });
+
+                            console.log(`[Notification] Sent ${decisionStatus} alert to farmer ${crop.farmerId}`);
                         }
-                        await crop.save();
-
-                        // Update Offer status in DB
-                        await Offer.findOneAndUpdate(
-                            {
-                                cropId: sessionId,
-                                buyerId: crop.pendingOffer.buyerId,
-                                status: "pending"
-                            },
-                            {
-                                status: decisionStatus === "accepted" ? "accepted" : "rejected",
-                                price: aiResponse.decision.counterPrice
-                            },
-                            { new: true }
-                        );
-
-                        // Notify Farmer via WebSocket
-                        emitNotification(crop.farmerId, "farmer:notification", {
-                            type: `OFFER_${decisionStatus.toUpperCase()}`,
-                            message: `The agent has ${decisionStatus} a deal for your ${crop.crop} at ₹${aiResponse.decision.counterPrice}`,
-                            data: {
-                                cropId: sessionId,
-                                status: decisionStatus,
-                                price: aiResponse.decision.counterPrice,
-                                cropName: crop.crop,
-                                buyerId: crop.pendingOffer.buyerId
-                            }
-                        });
-
-                        console.log(`[Notification] Sent ${decisionStatus} alert to farmer ${crop.farmerId}`);
                     }
                 }
             }
@@ -211,7 +201,22 @@ export class ChatService {
         const redisKey = `chat_session:${sessionId}`;
         const existingSession = await redisClient.get(redisKey);
 
-        return existingSession ? JSON.parse(existingSession) : null;
+        if (existingSession) {
+            return JSON.parse(existingSession);
+        }
+
+        // Check if the negotiation exists in the database
+        const offer = await Offer.findById(sessionId);
+        if (offer) {
+            return {
+                sessionId,
+                messages: [],
+                offer_price: offer.price,
+                buyer_district: offer.buyer_location
+            };
+        }
+
+        return null;
     }
 
     public async getNegotiationDetails(negotiationId: string) {
@@ -238,7 +243,6 @@ export class ChatService {
         );
         if (offer) {
             return {
-                status: offer.status,
                 currentPrice: offer.price,
                 cropDetails: {
                     crop: offer.cropId.crop,

@@ -5,9 +5,9 @@ export interface IOffer extends Document {
 	quantity: number;
 	price: number;
 	cropId: string;
-	status: string;
 	farmer_location: string;
 	buyer_location: string;
+	status: "pending" | "accepted" | "rejected";
 }
 
 const OfferSchema: Schema = new Schema(
@@ -16,9 +16,9 @@ const OfferSchema: Schema = new Schema(
 		quantity: { type: Number, required: true },
 		price: { type: Number, required: true },
 		cropId: { type: String, ref: "Crop", required: true },
-		status: { type: String, required: true, default: "pending" },
 		farmer_location: { type: String, required: true },
 		buyer_location: { type: String, required: true },
+		status: { type: String, enum: ["pending", "accepted", "rejected"], default: "pending" },
 	},
 	{ timestamps: true },
 );

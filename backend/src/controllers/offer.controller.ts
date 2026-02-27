@@ -25,6 +25,7 @@ export class OfferController extends BaseController {
 				},
 			);
 		} catch (error: any) {
+			console.error(error.message)
 			return this.sendError(
 				res,
 				STATUS_CODES.INTERNAL_SERVER_ERROR,
