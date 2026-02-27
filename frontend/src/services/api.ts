@@ -1,7 +1,7 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
-// Farmer routes live at /api/farmer — separate prefix from /api/v1
-const FARMER_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api/v1')
-    .replace('/api/v1', '/api/farmer')
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api'
+// Farmer routes live at /api/farmer — separate prefix from /api
+const FARMER_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api')
+    .replace('/api', '/api/farmer')
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -35,10 +35,18 @@ async function farmerRequest<T>(endpoint: string, options?: RequestInit): Promis
 // --- Crops API ---
 
 export interface Crop {
-    id: string
-    name: string
-    pricePerKg: number
-    unit: string
+    _id: string
+    farmerId: string
+    crop: string
+    quantity: number
+    location: {
+        lat: number
+        lon: number
+    }
+    isSold: boolean
+    reservedPrice: number
+    finalPrice: number
+    createdAt: string
     updatedAt: string
 }
 
@@ -64,7 +72,16 @@ interface FarmerListResponse {
     data: Farmer[]
 }
 
+interface FarmerCropsResponse {
+    success: boolean
+    data: Crop[]
+}
+
 export const farmerService = {
+    getallCrops: async (): Promise<Crop[]> => {
+        const res = await request<FarmerCropsResponse>('/farmer/get-crops')
+        return res.data
+    },
     /** GET /api/farmer/get-farmer — returns all farmers */
     getAll: async (): Promise<Farmer[]> => {
         const res = await farmerRequest<FarmerListResponse>('/get-farmer')
