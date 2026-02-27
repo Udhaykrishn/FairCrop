@@ -1,18 +1,7 @@
-<<<<<<< HEAD
-const API_BASE_URL = 'http://localhost:3000/api'
-
-interface BackendResponse<T> {
-    success: boolean
-    message: string
-    data: T
-    errors: any
-}
-=======
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1'
 // Farmer routes live at /api/farmer — separate prefix from /api/v1
 const FARMER_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1')
     .replace('/api/v1', '/api/farmer')
->>>>>>> 337337dee3079ba8aecff32bf2e0bcb48610ddbf
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
