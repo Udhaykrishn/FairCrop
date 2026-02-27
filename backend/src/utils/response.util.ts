@@ -1,17 +1,17 @@
-import { Response } from "express";
+import type { Response } from "express";
 
 export const sendResponse = (
-    res: Response,
-    statusCode: number,
-    success: boolean,
-    message: string,
-    data: any = null,
-    errors: any = null
+	res: Response,
+	statusCode: number,
+	success: boolean,
+	message: string,
+	data: any = null,
+	errors: any = null,
 ) => {
-    return res.status(statusCode).json({
-        success,
-        message,
-        data,
-        errors,
-    });
+	return res.status(statusCode).json({
+		success,
+		message,
+		data,
+		errors,
+	});
 };
