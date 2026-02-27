@@ -23,9 +23,6 @@
   },
   "homepage": "https://github.com/Udhaykrishn/FairCrop#readme",
   "devDependencies": {
-    "@biomejs/biome": "^2.4.4",
-    "@commitlint/cli": "^20.4.2",
-    "@commitlint/config-conventional": "^20.4.2",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7"
   }
