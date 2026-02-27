@@ -12,7 +12,7 @@ export class UserController {
 
 	public async createUser(req: Request, res: Response) {
 		try {
-			const user = await this.userService.createUser(req.body);
+			const user = await this._userService.createUser(req.body);
 			return sendResponse(
 				res,
 				STATUS_CODES.CREATED,
