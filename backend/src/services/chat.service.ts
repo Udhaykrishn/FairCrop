@@ -213,4 +213,41 @@ export class ChatService {
 
         return existingSession ? JSON.parse(existingSession) : null;
     }
+
+    public async getNegotiationDetails(negotiationId: string) {
+        const redisKey = `chat_session:${negotiationId}`;
+        const existingSession = await redisClient.get(redisKey);
+
+        if (existingSession) {
+            const session = JSON.parse(existingSession);
+            return {
+                status: "active",
+                currentPrice: session.offer_price,
+                counterPrice: session.counter_price,
+                cropDetails: {
+                    crop: session.crop,
+                    quantity: session.quantity,
+                    location: session.farmer_location,
+                },
+            };
+        }
+
+        // Fallback to DB
+        const offer = await Offer.findById(negotiationId).populate<{ cropId: any }>(
+            "cropId",
+        );
+        if (offer) {
+            return {
+                status: offer.status,
+                currentPrice: offer.price,
+                cropDetails: {
+                    crop: offer.cropId.crop,
+                    quantity: offer.quantity,
+                    location: offer.farmer_location,
+                },
+            };
+        }
+
+        return null;
+    }
 }
