@@ -5,6 +5,12 @@ export interface ILocation {
     lon: number;
 }
 
+export interface IPendingOffer {
+    buyerId: string;
+    offeredPrice: number;
+    status: "pending" | "confirmed" | "rejected";
+}
+
 export interface ICrop extends Document {
     farmerId: string;
     crop: string;
@@ -13,6 +19,7 @@ export interface ICrop extends Document {
     isSold: boolean;
     reservedPrice: number;
     finalPrice: number;
+    pendingOffer?: IPendingOffer;
     createdAt: Date;
     updatedAt: Date;
 }
