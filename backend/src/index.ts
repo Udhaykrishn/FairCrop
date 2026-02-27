@@ -7,7 +7,7 @@ import { initSocket } from "./socket/socket.gateway";
 const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
-    await connectDB();
+	await connectDB();
 
     // Wrap Express in a raw HTTP server so Socket.IO can share the same port
     const httpServer = http.createServer(app);
