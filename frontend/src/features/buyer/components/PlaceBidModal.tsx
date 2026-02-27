@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 
 interface PlaceBidModalProps {
     isOpen: boolean
@@ -22,6 +23,7 @@ export function PlaceBidModal({
     const [message, setMessage] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState('')
+    const navigate = useNavigate()
 
     if (!isOpen) return null
 
@@ -39,7 +41,7 @@ export function PlaceBidModal({
 
         setIsSubmitting(true)
         try {
-            const res = await fetch('http://localhost:4000/api/v1/offers', {
+            const res = await fetch('http://localhost:3000/api/offers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -47,21 +49,29 @@ export function PlaceBidModal({
                     totalQuantity,
                     district,
                     offerPrice: Number(price),
+                    message
                 }),
             })
 
             const data = await res.json()
 
-            if (!res.ok) {
-                setError(data.errors?.join(', ') || 'Failed to submit offer.')
+            if (!res.ok || !data.success) {
+                setError(data.message || 'Failed to submit offer.')
                 return
             }
 
             console.log('Offer placed:', data)
             onSubmit()
             onClose()
-        } catch {
-            setError('Network error. Please check if the server is running.')
+
+            // Redirect to negotiation page
+            const negotiationId = data.data._id || data.data.id
+            navigate({
+                to: '/buyer/negotiate',
+                search: { id: negotiationId }
+            })
+        } catch (err: any) {
+            setError(err.message || 'Network error. Please check if the server is running.')
         } finally {
             setIsSubmitting(false)
         }
