@@ -1,0 +1,31 @@
+import { Request, Response } from "express";
+import { injectable, inject } from "inversify";
+import { FarmerService } from "../services/farmer.service";
+import { TYPES } from "../types/inversify.types";
+import { sendResponse } from "../utils/response.util";
+import { STATUS_CODES } from "../constants/status-codes.constant";
+import { MESSAGES } from "../constants/messages.constant";
+
+@injectable()
+export class FarmerController {
+    constructor(@inject(TYPES.FarmerService) private farmerService: FarmerService) { }
+
+    public async createCrop(req: Request, res: Response) {
+        try {
+            const crop = await this.farmerService.createCrop(req.body);
+            return sendResponse(res, STATUS_CODES.CREATED, true, "Crop listed successfully", crop);
+        } catch (error: any) {
+            return sendResponse(res, STATUS_CODES.INTERNAL_SERVER_ERROR, false, MESSAGES.INTERNAL_SERVER_ERROR, null, error.message);
+        }
+    }
+
+    public async getCropsByFarmer(req: Request, res: Response) {
+        try {
+            const farmerId = req.params.farmerId as string;
+            const crops = await this.farmerService.getCropsByFarmer(farmerId);
+            return sendResponse(res, STATUS_CODES.OK, true, "Crops fetched successfully", crops);
+        } catch (error: any) {
+            return sendResponse(res, STATUS_CODES.INTERNAL_SERVER_ERROR, false, MESSAGES.INTERNAL_SERVER_ERROR, null, error.message);
+        }
+    }
+}
