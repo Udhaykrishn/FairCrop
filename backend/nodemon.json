@@ -3,5 +3,9 @@
         "src"
     ],
     "ext": "ts",
-    "exec": "swc src -d dist && node dist/src/index.js"
+    "ignore": [
+        "node_modules",
+        "dist"
+    ],
+    "exec": "node -r tsconfig-paths/register -r @swc-node/register ./src/index.ts"
 }
