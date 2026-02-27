@@ -1,11 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @layer base {
   html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     @apply scroll-smooth;
   }
 
   body {
-    @apply bg-white text-gray-900 antialiased;
+    @apply bg-gray-50 text-gray-900 antialiased;
   }
 }
