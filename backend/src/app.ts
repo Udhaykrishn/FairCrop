@@ -1,21 +1,21 @@
 import "reflect-metadata";
 import express from "express";
 import dotenv from "dotenv";
-import userRoutes from "./routes/user.route";
-
 dotenv.config();
+import userRoutes from "./routes/user.route";
+import offerRouter from "./routes/offer.router"
+
 
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Map Routes
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/offers", offerRouter);
 
-// Basic route
 app.get("/", (req, res) => {
-    res.send("API is running...");
+    res.json({ message: "API is running..." });
 });
 
 export default app;
