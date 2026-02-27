@@ -117,11 +117,6 @@ export class ChatService {
         try {
             if (aiResponse.decision) {
                 sessionData.counter_price = aiResponse.decision.counterPrice;
-
-                // Update offer_price in redis session if accepted
-                if (aiResponse.decision.status === "accepted") {
-                    sessionData.offer_price = aiResponse.decision.counterPrice;
-                }
             }
 
             const aiMsg: ChatMessage = {
@@ -143,13 +138,11 @@ export class ChatService {
                 updatedSession: sessionData,
             });
 
-            // Handle Agent (AI) decision and notify Farmer
             if (aiResponse.decision) {
                 const decisionStatus = aiResponse.decision.status;
                 if (decisionStatus === "accepted" || decisionStatus === "rejected") {
                     const crop = await Crop.findById(sessionId);
                     if (crop && crop.pendingOffer) {
-                        // Update Crop status
                         crop.pendingOffer.status = decisionStatus === "accepted" ? "confirmed" : "rejected";
                         if (decisionStatus === "accepted") {
                             // Find the specific offer to get the quantity being dealed
