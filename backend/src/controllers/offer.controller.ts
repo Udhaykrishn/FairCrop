@@ -9,12 +9,12 @@ import { BaseController } from "./base.controller";
 @injectable()
 export class OfferController extends BaseController {
 	constructor(@inject(OFFERS.OfferService) private readonly _offerService: OfferService) {
-        super();
-    }
+		super();
+	}
 
 	async createOffer(req: Request, res: Response) {
 		try {
-			const offer = await this.offerService.createOffer(req.body);
+			const offer = await this._offerService.createOffer(req.body);
 			return this.sendSuccess(
 				res,
 				STATUS_CODES.CREATED,
@@ -33,7 +33,7 @@ export class OfferController extends BaseController {
 
 	async updateOffer(req: Request, res: Response) {
 		try {
-			const offer = await this.offerService.updateOffer(
+			const offer = await this._offerService.updateOffer(
 				req.params.id as string,
 				req.body,
 			);
@@ -55,7 +55,7 @@ export class OfferController extends BaseController {
 
 	async getOffer(_req: Request, res: Response) {
 		try {
-			const offer = await this.offerService.getOffer();
+			const offer = await this._offerService.getOffer();
 			return this.sendSuccess(
 				res,
 				STATUS_CODES.OK,

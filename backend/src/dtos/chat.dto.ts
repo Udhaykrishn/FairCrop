@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { IsNotEmpty, IsOptional, IsString, IsNumber } from "class-validator";
 
 export class SendMessageDto {
 	@IsString()
@@ -12,8 +12,4 @@ export class SendMessageDto {
 	@IsNumber()
 	@IsOptional()
 	offer_price?: number;
-
-	@IsNumber()
-	@IsOptional()
-	counter_price?: number;
 }
