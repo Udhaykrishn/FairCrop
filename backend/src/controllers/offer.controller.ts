@@ -19,7 +19,10 @@ export class OfferController extends BaseController {
 				res,
 				STATUS_CODES.CREATED,
 				MESSAGES.OFFER_CREATED,
-				offer,
+				{
+					negotiationId: offer._id,
+					...offer.toObject()
+				},
 			);
 		} catch (error: any) {
 			return this.sendError(

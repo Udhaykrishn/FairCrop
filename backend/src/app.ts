@@ -6,7 +6,7 @@ dotenv.config();
 import userRoutes from "./routes/user.route";
 import farmerRoutes from "./routes/farmer.route";
 import offerRouter from "./routes/offer.router";
-import chatRouter from "./routes/chat.route";
+import negotiationRouter from "./routes/negotiation.route";
 import cors from "cors";
 import morgan from "morgan";
 
@@ -26,8 +26,8 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/v1/users", userRoutes);
 app.use("/api/farmer", farmerRoutes);
-app.use("/api/v1/offers", offerRouter);
-app.use("/api/chat", chatRouter);
+app.use("/api/offers", offerRouter);
+app.use("/api/negotiations", negotiationRouter);
 
 app.get("/", (_req, res) => {
 	res.json({ message: "API is running..." });
