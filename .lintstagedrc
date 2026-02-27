@@ -1,0 +1,8 @@
+{
+    "backend/**/*.{ts,js,json}": [
+        "npx @biomejs/biome check --write"
+    ],
+    "frontend/**/*.{ts,tsx,js,jsx,json,css}": [
+        "npx @biomejs/biome check --write"
+    ]
+}
