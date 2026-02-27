@@ -3,10 +3,16 @@ import express from "express";
 import dotenv from "dotenv";
 dotenv.config();
 import userRoutes from "./routes/user.route";
-import offerRouter from "./routes/offer.router"
-
+import offerRouter from "./routes/offer.router";
+import cors from "cors";
 
 const app = express();
+
+app.use(cors({
+    origin: "*",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+}))
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
