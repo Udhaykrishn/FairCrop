@@ -40,12 +40,13 @@ export class ChatService {
             sessionData = JSON.parse(existingSession);
         }
 
-        // Update offer_price or counter_price if they are explicitly sent by user
         if (dto.offer_price !== undefined) {
             sessionData.offer_price = dto.offer_price;
-        }
-        if (dto.counter_price !== undefined) {
-            sessionData.counter_price = dto.counter_price;
+        } else {
+            const userOfferMatch = dto.message.match(/\b(\d+(?:\.\d+)?)\b/);
+            if (userOfferMatch?.[1] && !sessionData.offer_price) {
+                sessionData.offer_price = Number(userOfferMatch[1]);
+            }
         }
 
         const userMsg: ChatMessage = {
@@ -66,7 +67,6 @@ export class ChatService {
             JSON.stringify(sessionData),
         );
 
-        // Notify room clients about user's message
         emitToChatRoom(sessionId, "chat:message", {
             sessionId,
             message: userMsg,

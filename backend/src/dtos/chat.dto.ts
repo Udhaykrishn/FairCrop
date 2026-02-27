@@ -13,7 +13,5 @@ export class SendMessageDto {
 	@IsOptional()
 	offer_price?: number;
 
-	@IsNumber()
-	@IsOptional()
-	counter_price?: number;
+
 }

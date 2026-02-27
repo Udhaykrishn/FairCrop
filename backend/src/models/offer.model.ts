@@ -5,10 +5,7 @@ export interface IOffer extends Document {
 	price: number;
 	cropId: string;
 	status: string;
-	location: {
-		lat: number;
-		lon: number;
-	};
+	location: string;
 }
 
 const OfferSchema: Schema = new Schema(
@@ -17,10 +14,8 @@ const OfferSchema: Schema = new Schema(
 		price: { type: Number, required: true },
 		cropId: { type: String, ref: "Crop", required: true },
 		status: { type: String, required: true, default: "pending" },
-		location: {
-			lat: { type: Number, required: true },
-			lon: { type: Number, required: true },
-		},
+		farmer_location: { type: String, required: true },
+		buyer_location: { type: String, required: true },
 	},
 	{ timestamps: true },
 );
