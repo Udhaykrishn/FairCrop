@@ -7,7 +7,7 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         headers: {
             'Content-Type': 'application/json',
-            ...options?.headers,
+            ...(options?.headers as Record<string, string>),
         },
         ...options,
     })
@@ -22,7 +22,7 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
 async function farmerRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${FARMER_BASE_URL}${endpoint}`, {
-        headers: { 'Content-Type': 'application/json', ...options?.headers },
+        headers: { 'Content-Type': 'application/json', ...(options?.headers as Record<string, string>) },
         ...options,
     })
     if (!response.ok) {
@@ -124,23 +124,63 @@ interface SendMessageResponse {
 }
 
 export const negotiationService = {
-    /** GET /api/v1/negotiations/:id/messages */
+    /** GET /api/negotiations/:id/messages */
     getMessages: async (negotiationId: string): Promise<Message[]> => {
         const res = await request<MessagesResponse>(`/negotiations/${negotiationId}/messages`)
-        return res.data
+        // Map backend ChatMessage to frontend Message
+        return (res.data as any[]).map((msg: any, idx: number) => ({
+            id: msg.id || `${idx}`,
+            role: msg.role === 'user' ? 'buyer' : 'ai',
+            text: msg.content,
+            timestamp: msg.timestamp || new Date().toISOString()
+        }))
     },
 
-    /** GET /api/v1/negotiations/:id */
+    /** GET /api/negotiations/:id */
     getById: async (negotiationId: string): Promise<Negotiation> => {
         const res = await request<NegotiationResponse>(`/negotiations/${negotiationId}`)
-        return res.data
+        const data = res.data as any
+        return {
+            _id: negotiationId,
+            crop: { crop: data.cropDetails?.crop || 'Unknown' },
+            currentPrice: data.currentPrice || 0,
+            quantity: data.cropDetails?.quantity || 0,
+            status: data.status || 'active'
+        }
     },
 
-    /** POST /api/v1/negotiations/:id/messages */
+    /** POST /api/negotiations/:id/messages */
     sendMessage: async (negotiationId: string, text: string): Promise<Message> => {
         const res = await request<SendMessageResponse>(`/negotiations/${negotiationId}/messages`, {
             method: 'POST',
-            body: JSON.stringify({ text }),
+            body: JSON.stringify({ message: text }), // Backend uses 'message' field
+        })
+        const data = res.data as any
+        // Backend returns the full updated session or the last message
+        // Based on NegotiatonController, it returns updatedSession
+        const lastMsg = data.messages[data.messages.length - 1]
+        return {
+            id: lastMsg.id || `${Date.now()}`,
+            role: lastMsg.role === 'user' ? 'buyer' : 'ai',
+            text: lastMsg.content,
+            timestamp: lastMsg.timestamp || new Date().toISOString()
+        }
+    },
+}
+
+// --- Offer API ---
+
+interface OfferResponse {
+    success: boolean
+    message: string
+    data: any
+}
+
+export const offerService = {
+    create: async (data: any): Promise<any> => {
+        const res = await request<OfferResponse>('/offers', {
+            method: 'POST',
+            body: JSON.stringify(data),
         })
         return res.data
     },
