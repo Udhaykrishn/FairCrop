@@ -38,10 +38,7 @@ export interface Crop {
     farmerId: string
     crop: string
     quantity: number
-    location: {
-        lat: number
-        lon: number
-    }
+    location: string
     isSold: boolean
     reservedPrice: number
     finalPrice: number
@@ -70,7 +67,7 @@ export interface CropListing {
     farmerId: string
     crop: string
     quantity: number
-    location: { lat: number; lon: number }
+    location: string
     reservedPrice: number
     finalPrice: number
     isSold: boolean
@@ -82,7 +79,7 @@ export interface ListCropPayload {
     farmerId: string
     crop: string
     quantity: number
-    location: { lat: number; lon: number }
+    location: string
 }
 
 interface FarmerListResponse {

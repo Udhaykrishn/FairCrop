@@ -51,7 +51,6 @@ export function FarmerDashboard() {
 
     // Location state — district dropdown
     const [district, setDistrict] = useState(KERALA_DISTRICTS[11]) // default: Wayanad
-    const coords = { lat: district.lat, lon: district.lon }
 
     // Form submission state
     const [submitting, setSubmitting] = useState(false)
@@ -84,7 +83,7 @@ export function FarmerDashboard() {
                 farmerId: farmer._id,
                 crop,
                 quantity: Number(quantity),
-                location: coords,
+                location: district.name,
             })
             setListedCrop(result)
         } catch (err: unknown) {

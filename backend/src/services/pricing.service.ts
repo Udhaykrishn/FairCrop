@@ -20,7 +20,7 @@ export class PricingService {
     public async getReservedPrice(
         crop: string,
         quantity: number,
-        location: { lat: number; lon: number }
+        location: string
     ): Promise<IPricingResponse> {
         // ── Mock external API call ──────────────────────────────────────────
         // Simulates a slight network delay
@@ -33,15 +33,19 @@ export class PricingService {
             onion: 22,
             rice: 35,
             wheat: 25,
+            banana: 30,
+            coconut: 25,
+            ginger: 60,
+            pepper: 550,
+            tapioca: 12,
+            rubber: 180,
+            coffee: 300,
             default: 20,
         };
 
         const key = crop.toLowerCase();
         const pricePerKg = basePrices[key] ?? basePrices["default"];
-
-        // Simple formula: price/kg × quantity, with a small location-based factor
-        const locationFactor = 1 + (location.lat % 5) / 100; // tiny regional variation
-        const reservedPrice = Math.round(pricePerKg * quantity * locationFactor);
+        const reservedPrice = Math.round(pricePerKg * quantity);
 
         return {
             crop,
