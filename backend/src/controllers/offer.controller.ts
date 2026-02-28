@@ -21,13 +21,7 @@ export class OfferController extends BaseController {
 		try {
 			const offer = await this._offerService.createOffer(req.body);
 
-			// Initialize chat asynchronously so it doesn't block the API response
-			const initialMessage = `I would like to offer ₹${offer.price}/kg for ${offer.quantity} kg.`;
-			this._chatService.processMessage({
-				sessionId: offer._id.toString(),
-				message: initialMessage,
-				offer_price: offer.price
-			}).catch(err => console.error("Failed to initialize chat:", err));
+
 
 			return this.sendSuccess(
 				res,

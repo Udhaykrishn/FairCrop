@@ -311,12 +311,12 @@ export function FarmerDashboard() {
                                         <span className="font-semibold text-gray-800">{listedCrop.quantity} kg</span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="flex items-center gap-1.5 text-gray-500">
+                                        {/* <span className="flex items-center gap-1.5 text-gray-500">
                                             <TrendingUp size={12} style={{ color: BRAND }} /> Profit
-                                        </span>
-                                        <span className="font-bold" style={{ color: BRAND }}>
+                                        </span> */}
+                                        {/* <span className="font-bold" style={{ color: BRAND }}>
                                             ₹{(listedCrop.reservedPrice * listedCrop.quantity).toLocaleString('en-IN')}
-                                        </span>
+                                        </span> */}
                                     </div>
                                 </div>
 
