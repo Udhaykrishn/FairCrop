@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as PublicRouteImport } from './routes/_public'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as BuyerNegotiateRouteImport } from './routes/buyer/negotiate'
-import { Route as BuyerDashboardRouteImport } from './routes/buyer/dashboard'
 import { Route as BuyerCropsRouteImport } from './routes/buyer/crops'
 import { Route as BuyerBidRouteImport } from './routes/buyer/bid'
 import { Route as PublicDashboardRouteImport } from './routes/_public/dashboard'
@@ -30,11 +29,6 @@ const PublicIndexRoute = PublicIndexRouteImport.update({
 const BuyerNegotiateRoute = BuyerNegotiateRouteImport.update({
   id: '/buyer/negotiate',
   path: '/buyer/negotiate',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BuyerDashboardRoute = BuyerDashboardRouteImport.update({
-  id: '/buyer/dashboard',
-  path: '/buyer/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuyerCropsRoute = BuyerCropsRouteImport.update({
@@ -64,7 +58,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof PublicDashboardRoute
   '/buyer/bid': typeof BuyerBidRoute
   '/buyer/crops': typeof BuyerCropsRoute
-  '/buyer/dashboard': typeof BuyerDashboardRoute
   '/buyer/negotiate': typeof BuyerNegotiateRoute
 }
 export interface FileRoutesByTo {
@@ -72,7 +65,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof PublicDashboardRoute
   '/buyer/bid': typeof BuyerBidRoute
   '/buyer/crops': typeof BuyerCropsRoute
-  '/buyer/dashboard': typeof BuyerDashboardRoute
   '/buyer/negotiate': typeof BuyerNegotiateRoute
   '/': typeof PublicIndexRoute
 }
@@ -83,7 +75,6 @@ export interface FileRoutesById {
   '/_public/dashboard': typeof PublicDashboardRoute
   '/buyer/bid': typeof BuyerBidRoute
   '/buyer/crops': typeof BuyerCropsRoute
-  '/buyer/dashboard': typeof BuyerDashboardRoute
   '/buyer/negotiate': typeof BuyerNegotiateRoute
   '/_public/': typeof PublicIndexRoute
 }
@@ -95,7 +86,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/buyer/bid'
     | '/buyer/crops'
-    | '/buyer/dashboard'
     | '/buyer/negotiate'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -103,7 +93,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/buyer/bid'
     | '/buyer/crops'
-    | '/buyer/dashboard'
     | '/buyer/negotiate'
     | '/'
   id:
@@ -113,7 +102,6 @@ export interface FileRouteTypes {
     | '/_public/dashboard'
     | '/buyer/bid'
     | '/buyer/crops'
-    | '/buyer/dashboard'
     | '/buyer/negotiate'
     | '/_public/'
   fileRoutesById: FileRoutesById
@@ -122,7 +110,6 @@ export interface RootRouteChildren {
   PublicRoute: typeof PublicRouteWithChildren
   BuyerBidRoute: typeof BuyerBidRoute
   BuyerCropsRoute: typeof BuyerCropsRoute
-  BuyerDashboardRoute: typeof BuyerDashboardRoute
   BuyerNegotiateRoute: typeof BuyerNegotiateRoute
 }
 
@@ -147,13 +134,6 @@ declare module '@tanstack/react-router' {
       path: '/buyer/negotiate'
       fullPath: '/buyer/negotiate'
       preLoaderRoute: typeof BuyerNegotiateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/buyer/dashboard': {
-      id: '/buyer/dashboard'
-      path: '/buyer/dashboard'
-      fullPath: '/buyer/dashboard'
-      preLoaderRoute: typeof BuyerDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/buyer/crops': {
@@ -206,7 +186,6 @@ const rootRouteChildren: RootRouteChildren = {
   PublicRoute: PublicRouteWithChildren,
   BuyerBidRoute: BuyerBidRoute,
   BuyerCropsRoute: BuyerCropsRoute,
-  BuyerDashboardRoute: BuyerDashboardRoute,
   BuyerNegotiateRoute: BuyerNegotiateRoute,
 }
 export const routeTree = rootRouteImport
