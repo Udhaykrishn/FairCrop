@@ -104,7 +104,7 @@ interface ListCropResponse {
 
 export const farmerService = {
     getAllCrops: async (): Promise<Crop[]> => {
-        const res = await request<FarmerCropsResponse>('/farmer/get-crops')
+        const res = await farmerRequest<FarmerCropsResponse>('/get-crops')
         return res.data
     },
     /** GET /api/farmer/get-farmer — returns all farmers */
@@ -156,10 +156,27 @@ interface SendMessageResponse {
     data: Message
 }
 
+async function baseRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    const response = await fetch(`/api${endpoint}`, {
+        headers: {
+            'Content-Type': 'application/json',
+            ...(options?.headers as Record<string, string>),
+        },
+        ...options,
+    })
+
+    if (!response.ok) {
+        const error = await response.text()
+        throw new Error(error || `HTTP error ${response.status}`)
+    }
+
+    return response.json() as Promise<T>
+}
+
 export const negotiationService = {
     /** GET /api/negotiations/:id/messages */
     getMessages: async (negotiationId: string): Promise<Message[]> => {
-        const res = await request<MessagesResponse>(`/negotiations/${negotiationId}/messages`)
+        const res = await baseRequest<MessagesResponse>(`/negotiations/${negotiationId}/messages`)
         // Map backend ChatMessage to frontend Message
         return (res.data as any[]).map((msg: any, idx: number) => ({
             id: msg.id || `${idx}`,
@@ -171,7 +188,7 @@ export const negotiationService = {
 
     /** GET /api/negotiations/:id */
     getById: async (negotiationId: string): Promise<Negotiation> => {
-        const res = await request<NegotiationResponse>(`/negotiations/${negotiationId}`)
+        const res = await baseRequest<NegotiationResponse>(`/negotiations/${negotiationId}`)
         const data = res.data as any
         return {
             _id: negotiationId,
@@ -184,7 +201,7 @@ export const negotiationService = {
 
     /** POST /api/negotiations/:id/messages */
     sendMessage: async (negotiationId: string, text: string): Promise<Message> => {
-        const res = await request<SendMessageResponse>(`/negotiations/${negotiationId}/messages`, {
+        const res = await baseRequest<SendMessageResponse>(`/negotiations/${negotiationId}/messages`, {
             method: 'POST',
             body: JSON.stringify({ message: text }), // Backend uses 'message' field
         })
@@ -211,7 +228,7 @@ interface OfferResponse {
 
 export const offerService = {
     create: async (data: any): Promise<any> => {
-        const res = await request<OfferResponse>('/offers', {
+        const res = await baseRequest<OfferResponse>('/offers', {
             method: 'POST',
             body: JSON.stringify(data),
         })
