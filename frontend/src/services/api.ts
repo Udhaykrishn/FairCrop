@@ -1,7 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api'
-// Farmer routes live at /api/farmer — separate prefix from /api
-const FARMER_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api')
-    .replace('/api', '/api/farmer')
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
+// Farmer routes use a different prefix: /api/farmer (not /api/v1)
+const FARMER_BASE_URL = '/api/farmer'
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -66,6 +65,26 @@ export interface Farmer {
     updatedAt: string
 }
 
+export interface CropListing {
+    _id: string
+    farmerId: string
+    crop: string
+    quantity: number
+    location: { lat: number; lon: number }
+    reservedPrice: number
+    finalPrice: number
+    isSold: boolean
+    createdAt: string
+    updatedAt: string
+}
+
+export interface ListCropPayload {
+    farmerId: string
+    crop: string
+    quantity: number
+    location: { lat: number; lon: number }
+}
+
 interface FarmerListResponse {
     success: boolean
     message: string
@@ -77,14 +96,28 @@ interface FarmerCropsResponse {
     data: Crop[]
 }
 
+interface ListCropResponse {
+    success: boolean
+    message: string
+    data: CropListing
+}
+
 export const farmerService = {
-    getallCrops: async (): Promise<Crop[]> => {
+    getAllCrops: async (): Promise<Crop[]> => {
         const res = await request<FarmerCropsResponse>('/farmer/get-crops')
         return res.data
     },
     /** GET /api/farmer/get-farmer — returns all farmers */
     getAll: async (): Promise<Farmer[]> => {
         const res = await farmerRequest<FarmerListResponse>('/get-farmer')
+        return res.data
+    },
+    /** POST /api/farmer/list-crop — create new crop listing, returns crop with reservedPrice */
+    listCrop: async (payload: ListCropPayload): Promise<CropListing> => {
+        const res = await farmerRequest<ListCropResponse>('/list-crop', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        })
         return res.data
     },
 }
