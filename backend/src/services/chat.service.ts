@@ -86,12 +86,22 @@ export class ChatService {
         sessionData.messages.push(userMsg);
 
         // Format request for AI Agent as specified
+        const keralaDistricts = [
+            "Thiruvananthapuram", "Kollam", "Pathanamthitta", "Alappuzha",
+            "Kottayam", "Idukki", "Ernakulam", "Thrissur", "Palakkad",
+            "Malappuram", "Kozhikode", "Wayanad", "Kannur", "Kasaragod",
+        ];
+        const rawLocation = sessionData.farmer_location || "";
+        const matchedDistrict = keralaDistricts.find(d =>
+            rawLocation.toLowerCase().includes(d.toLowerCase())
+        ) || "Palakkad";
+
         const aiRequest = {
             buyerMessage: dto.message,
-            buyerDistrict: sessionData.buyer_district || "Unknown District",
-            crop: sessionData.crop || "Unknown Crop",
+            buyerDistrict: sessionData.buyer_district || "Ernakulam",
+            crop: sessionData.crop || "Tomato",
             quantity: sessionData.quantity || 0,
-            farmerLocation: sessionData.farmer_location || "Unknown Location",
+            farmerLocation: matchedDistrict,
             reservePrice: sessionData.reserve_price || 0,
             lastCounterPrice:
                 sessionData.counter_price || sessionData.offer_price || 0,

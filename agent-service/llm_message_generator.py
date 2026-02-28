@@ -1,5 +1,5 @@
 """
-LLM Message Generator — Communication layer powered by Google Gemini.
+LLM Message Generator — Communication layer powered by local Ollama (Llama 3.2).
 
 CRITICAL DESIGN PRINCIPLE:
     LLM NEVER decides prices, accepts/rejects, or calculates anything.
@@ -12,30 +12,33 @@ Two functions:
 
 import os
 import json
-from dotenv import load_dotenv
-import google.generativeai as genai
+import re
+import requests
 
-# Load .env file from the same directory
-load_dotenv()
+# ─── Ollama config ────────────────────────────────────────────────────────────
 
-# ─── Gemini setup ─────────────────────────────────────────────────────────────
-
-_model = None
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
 
 
-def _get_model():
-    """Lazy-init the Gemini model using GEMINI_API_KEY env var."""
-    global _model
-    if _model is None:
-        api_key = os.environ.get("GEMINI_API_KEY", "")
-        if not api_key:
-            raise RuntimeError(
-                "GEMINI_API_KEY environment variable not set. "
-                "Set it to your Google Gemini API key."
-            )
-        genai.configure(api_key=api_key)
-        _model = genai.GenerativeModel("gemini-2.0-flash")
-    return _model
+def _ollama_generate(prompt: str, system: str = "", temperature: float = 0.7) -> str:
+    """Call local Ollama API and return the generated text."""
+    response = requests.post(
+        f"{OLLAMA_URL}/api/generate",
+        json={
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "system": system,
+            "stream": False,
+            "options": {
+                "temperature": temperature,
+                "num_predict": 200,
+            },
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json().get("response", "").strip()
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -58,7 +61,7 @@ NEGOTIATION_SYSTEM_PROMPT = """You are a professional agricultural trade negotia
 
 def generate_negotiation_message(decision: dict, context: dict) -> str:
     """
-    Generate a human-style negotiation message using Gemini.
+    Generate a human-style negotiation message using local Llama model.
 
     Args:
         decision: Machine-readable output from negotiation engine:
@@ -113,24 +116,15 @@ def generate_negotiation_message(decision: dict, context: dict) -> str:
     user_prompt = "\n".join(user_parts)
 
     try:
-        model = _get_model()
-        response = model.generate_content(
-            [
-                {"role": "user", "parts": [{"text": NEGOTIATION_SYSTEM_PROMPT + "\n\n" + user_prompt}]}
-            ],
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.7,
-                max_output_tokens=200,
-            ),
-        )
-        return response.text.strip()
+        return _ollama_generate(user_prompt, system=NEGOTIATION_SYSTEM_PROMPT, temperature=0.7)
     except Exception as e:
         # Fallback to template if LLM fails
+        print(f"[LLM] Negotiation message generation failed: {e}")
         return _template_fallback(decision, context)
 
 
 def _template_fallback(decision: dict, context: dict) -> str:
-    """Deterministic fallback if Gemini is unavailable."""
+    """Deterministic fallback if Ollama is unavailable."""
     status = decision.get("status")
     offer = context.get("buyer_offer", 0)
     crop = context.get("crop", "produce")
@@ -188,7 +182,7 @@ Output: {"offerPricePerKg": null, "quantity": null, "buyerDistrict": null, "inte
 
 def extract_offer_from_text(buyer_text: str) -> dict:
     """
-    Use Gemini to extract structured offer data from buyer's natural language.
+    Use local Llama model to extract structured offer data from buyer's natural language.
 
     Args:
         buyer_text: Raw text from the buyer, e.g. "I can offer ₹22 per kg for 500kg"
@@ -197,17 +191,11 @@ def extract_offer_from_text(buyer_text: str) -> dict:
         dict with keys: offerPricePerKg, quantity, buyerDistrict, intent
     """
     try:
-        model = _get_model()
-        response = model.generate_content(
-            [
-                {"role": "user", "parts": [{"text": EXTRACTION_SYSTEM_PROMPT + "\n\nBuyer message: " + buyer_text}]}
-            ],
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.0,
-                max_output_tokens=150,
-            ),
+        raw = _ollama_generate(
+            prompt=f"Buyer message: {buyer_text}",
+            system=EXTRACTION_SYSTEM_PROMPT,
+            temperature=0.0,
         )
-        raw = response.text.strip()
 
         # Clean potential markdown wrapping
         if raw.startswith("```"):
@@ -218,20 +206,24 @@ def extract_offer_from_text(buyer_text: str) -> dict:
         return json.loads(raw)
     except Exception as e:
         # Fallback: try basic regex extraction
+        print(f"[LLM] Offer extraction failed: {e}")
         return _regex_fallback(buyer_text)
 
 
 def _regex_fallback(text: str) -> dict:
     """Regex-based fallback for offer extraction."""
-    import re
-
     price = None
     quantity = None
 
-    # Try to find price
+    # Try to find price — first try explicit patterns like "25 per kg"
     price_match = re.search(r"₹?\s*(\d+(?:\.\d+)?)\s*(?:per\s*kg|/kg|per\s*kilo)", text, re.IGNORECASE)
     if price_match:
         price = float(price_match.group(1))
+    else:
+        # Fallback: match any standalone number (e.g., "I would say 25")
+        bare_match = re.search(r"(?:^|\s)₹?(\d+(?:\.\d+)?)(?:\s|$|[.,!?])", text)
+        if bare_match:
+            price = float(bare_match.group(1))
 
     # Try to find quantity
     qty_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:kg|kilo|quintal)", text, re.IGNORECASE)
