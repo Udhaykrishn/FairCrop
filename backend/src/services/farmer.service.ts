@@ -13,26 +13,17 @@ export class FarmerService {
     ) { }
 
     public async createCrop(data: Partial<ICrop>): Promise<ICrop> {
-        const existing = await Crop.findOne({
-            farmerId: data.farmerId,
-            crop: data.crop,
-            isSold: false,
-        });
-
-        if (existing) {
-            throw new Error(
-                `An active listing for "${data.crop}" already exists for farmer ${data.farmerId}.`
-            );
-        }
-
+        // Fetch reserved price from pricing API (mock)
         const pricing = await this.pricingService.getReservedPrice(
             data.crop as string,
             data.quantity as number,
-            data.location as { lat: number; lon: number }
+            data.location as string
         );
 
+        // Stamp the reserved price on the crop before saving
         data.reservedPrice = pricing.reservedPrice;
 
+        // Save and return
         const crop = new Crop(data);
         return await crop.save();
     }
