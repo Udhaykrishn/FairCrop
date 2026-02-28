@@ -124,6 +124,16 @@ export function NegotiationChat() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages])
 
+    // Auto-send initial message if chat is empty
+    const initialSentRef = useRef(false)
+    useEffect(() => {
+        if (!messagesLoading && !negotiationLoading && messages.length === 0 && negotiation && !initialSentRef.current) {
+            initialSentRef.current = true
+            const initialMessageText = `I would like to offer ₹${negotiation.currentPrice}/kg for ${negotiation.quantity} kg.`
+            sendMessage(initialMessageText)
+        }
+    }, [messages, messagesLoading, negotiation, negotiationLoading, sendMessage])
+
     const handleSendMessage = useCallback(() => {
         if (!input.trim() || isSending) return
         sendMessage(input.trim())

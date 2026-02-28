@@ -158,7 +158,10 @@ export function HeroSection() {
                                 </button>
 
                                 {/* Secondary */}
-                                <button className="inline-flex items-center gap-2.5 rounded-full border-2 border-green-200 bg-white px-7 py-3.5 text-sm font-semibold text-green-700 transition-all duration-300 hover:border-green-400 hover:bg-green-50 hover:-translate-y-0.5 active:scale-[0.98]">
+                                <button
+                                    onClick={() => navigate({ to: '/buyer/crops' })}
+                                    className="inline-flex items-center gap-2.5 rounded-full border-2 border-green-200 bg-white px-7 py-3.5 text-sm font-semibold text-green-700 transition-all duration-300 hover:border-green-400 hover:bg-green-50 hover:-translate-y-0.5 active:scale-[0.98]"
+                                >
                                     <ShoppingCart size={15} />
                                     Explore Marketplace
                                 </button>
