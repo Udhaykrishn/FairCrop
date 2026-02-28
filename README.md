@@ -1,6 +1,15 @@
-# FairCrop AI 🌱
 
-FairCrop AI is an intelligent "Agentic AI Marketplace" that connects farmers and buyers across Kerala. It leverages a multi-agent AI system to negotiate profitable crop deals—evaluating price, distance, and delivery costs in real-time to bridge the gap between farmers and buyers, ensuring fair prices and transparent logistics.
+### Team Name - Code Legion
+
+### Team Members
+- Muhammad Fuvad Sinin M
+- Uday Krishna
+- Najath Muhammed
+- Misthah KP
+- Abisinan
+
+# FairCrop AI 🌱
+FairCrop AI is an intelligent "Agentic AI Marketplace" that connects farmers and buyers across Kerala. It leverages a multi-agent AI system to negotiate profitable crop deals-evaluating price, distance, and delivery costs in real-time to bridge the gap between farmers and buyers, ensuring fair prices and transparent logistics.
 
 ---
 
@@ -21,7 +30,7 @@ FairCrop AI is an intelligent "Agentic AI Marketplace" that connects farmers and
 - **Market Analyst Agent:** Sets the baseline reserve price using historical/real market data.
 - **Listener / Intent Agent:** Extracts structured intents and offers from natural buyer language.
 - **Decision Engine:** Computes distance, logistics costs, and profitability to algorithmically decide whether to accept, counter, or reject an offer.
-- **LLM Communicator (Google Gemini):** Translates the strict numerical decisions back into pleasant, human-like negotiation messages.
+- **LLM Communicator (Ollama):** Translates the strict numerical decisions back into pleasant, human-like negotiation messages.
 
 ---
 
@@ -46,7 +55,7 @@ The architecture is composed of three main microservices:
 
 ### 3. Agent Service (`/agent-service`)
 - **Framework:** Python, FastAPI
-- **LLM Integration:** Google Gemini
+- **LLM Integration:** Ollama
 - **Validation:** Pydantic
 - **Role:** Pure stateless decision engine executing the multi-agent negotiation logic.
 
@@ -59,7 +68,7 @@ To run this project locally, you will need:
 - **Python** (v3.10+)
 - **MongoDB** (Local or Atlas URI)
 - **Redis** (Local or Cloud instance)
-- **Google Gemini API Key**
+
 
 ---
 
@@ -127,5 +136,3 @@ To run this project locally, you will need:
 
 ---
 
-## 🤝 Contributing
-Built during the KSUM Hackathon. Contributions, issues, and feature requests are welcome!
