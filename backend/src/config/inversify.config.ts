@@ -1,5 +1,5 @@
 import { Container } from "inversify";
-import { ChatController } from "../controllers/chat.controller";
+import { NegotiationController } from "../controllers/negotiation.controller";
 import { OfferController } from "../controllers/offer.controller";
 import { UserController } from "../controllers/user.controller";
 import { FarmerService } from "../services/farmer.service";
@@ -26,6 +26,6 @@ container.bind<OfferController>(OfferController).toSelf();
 
 container.bind<AiService>(CHAT_TYPES.AiService).to(AiService);
 container.bind<ChatService>(CHAT_TYPES.ChatService).to(ChatService);
-container.bind<ChatController>(CHAT_TYPES.ChatController).to(ChatController);
+container.bind<NegotiationController>(CHAT_TYPES.ChatController).to(NegotiationController);
 
 export { container };

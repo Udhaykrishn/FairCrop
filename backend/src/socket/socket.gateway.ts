@@ -1,116 +1,115 @@
 import { Server as HttpServer } from "http";
-import { Server as SocketServer, Socket } from "socket.io";
-import { Crop } from "../models/crop.model";
+import WebSocket, { WebSocketServer } from "ws";
 
-// ── Singleton IO instance (accessed by the service layer) ──────────────────
-let io: SocketServer;
+let wss: WebSocketServer;
 
-// Maps for tracking connected sockets
-// farmerId  → socketId
-// buyerId   → socketId
-const farmerSockets = new Map<string, string>();
-const buyerSockets = new Map<string, string>();
+const chatRooms = new Map<string, Set<WebSocket>>();
+const notificationRooms = new Map<string, Set<WebSocket>>();
 
-export const initSocket = (httpServer: HttpServer): SocketServer => {
-    io = new SocketServer(httpServer, {
-        cors: { origin: "*", methods: ["GET", "POST", "PATCH"] },
-    });
+export const initSocket = (httpServer: HttpServer): WebSocketServer => {
+    wss = new WebSocketServer({ server: httpServer });
 
-    io.on("connection", (socket: Socket) => {
-        console.log(`[Socket] Client connected: ${socket.id}`);
+    wss.on("connection", (ws: WebSocket) => {
+        console.log(`[Socket] New Client connected`);
 
-        // ── Registration ─────────────────────────────────────────────────────
-        // Farmer joins with their farmerId
-        socket.on("farmer:join", (farmerId: string) => {
-            farmerSockets.set(farmerId, socket.id);
-            console.log(`[Socket] Farmer ${farmerId} registered → ${socket.id}`);
+        const joinedChatRooms = new Set<string>();
+        const joinedNotificationRooms = new Set<string>();
+
+        ws.on("message", async (rawMessage: string) => {
+            try {
+                const parsed = JSON.parse(rawMessage);
+                const { type, payload } = parsed;
+
+                switch (type) {
+                    case "chat:join":
+                        if (!chatRooms.has(payload)) {
+                            chatRooms.set(payload, new Set());
+                        }
+                        chatRooms.get(payload)?.add(ws);
+                        joinedChatRooms.add(payload);
+                        console.log(`[Socket] Client joined chat room chat_${payload}`);
+                        break;
+
+                    case "notification:join":
+                        if (!notificationRooms.has(payload)) {
+                            notificationRooms.set(payload, new Set());
+                        }
+                        notificationRooms.get(payload)?.add(ws);
+                        joinedNotificationRooms.add(payload);
+                        console.log(`[Socket] Client joined notification room for user_${payload}`);
+                        break;
+
+                    case "chat:sendMessage":
+                        try {
+                            const { container } = await import("../config/inversify.config");
+                            const { CHAT_TYPES } = await import("../types/chat.type");
+                            const chatService = container.get<any>(CHAT_TYPES.ChatService);
+                            await chatService.processMessage(payload);
+                        } catch (err: any) {
+                            console.error("[Socket] Error processing chat message:", err);
+                            ws.send(JSON.stringify({ type: "error", payload: { message: err.message || "Failed to process chat message." } }));
+                        }
+                        break;
+
+                    default:
+                        console.log(`[Socket] Unknown event type: ${type}`);
+                }
+            } catch (err) {
+                console.error("[Socket] Failed to parse/handle message:", err);
+            }
         });
 
-        // Buyer joins with their buyerId
-        socket.on("buyer:join", (buyerId: string) => {
-            buyerSockets.set(buyerId, socket.id);
-            console.log(`[Socket] Buyer ${buyerId} registered → ${socket.id}`);
-        });
-
-        // ── Farmer responds to a price offer ──────────────────────────────────
-        // Payload: { cropId, decision: "confirm" | "reject" }
-        socket.on(
-            "price:respond",
-            async (payload: { cropId: string; decision: "confirm" | "reject" }) => {
-                const { cropId, decision } = payload;
-
-                try {
-                    const crop = await Crop.findById(cropId);
-                    if (!crop || !crop.pendingOffer) {
-                        socket.emit("error", { message: "No pending offer found for this crop." });
-                        return;
-                    }
-
-                    const { buyerId, offeredPrice } = crop.pendingOffer;
-
-                    if (decision === "confirm") {
-                        // Update crop: accept the price and mark as sold
-                        crop.finalPrice = offeredPrice;
-                        crop.isSold = true;
-                        crop.pendingOffer = undefined;
-                        await crop.save();
-
-                        // Notify buyer: offer accepted
-                        const buyerSocketId = buyerSockets.get(buyerId);
-                        if (buyerSocketId) {
-                            io.to(buyerSocketId).emit("price:confirmed", {
-                                cropId,
-                                finalPrice: offeredPrice,
-                                message: "Your offer was accepted! The crop is now yours.",
-                            });
-                        }
-
-                        console.log(`[Socket] Offer CONFIRMED for crop ${cropId} at ₹${offeredPrice}`);
-                    } else {
-                        // Clear the pending offer without updating price
-                        crop.pendingOffer = undefined;
-                        await crop.save();
-
-                        // Notify buyer: offer rejected
-                        const buyerSocketId = buyerSockets.get(buyerId);
-                        if (buyerSocketId) {
-                            io.to(buyerSocketId).emit("price:rejected", {
-                                cropId,
-                                message: "Your offer was rejected by the farmer.",
-                            });
-                        }
-
-                        console.log(`[Socket] Offer REJECTED for crop ${cropId}`);
-                    }
-                } catch (err) {
-                    console.error("[Socket] Error handling price:respond:", err);
-                    socket.emit("error", { message: "Internal server error." });
+        ws.on("close", () => {
+            for (const roomId of joinedChatRooms) {
+                const room = chatRooms.get(roomId);
+                if (room) {
+                    room.delete(ws);
+                    if (room.size === 0) chatRooms.delete(roomId);
                 }
             }
-        );
-
-        // ── Cleanup on disconnect ─────────────────────────────────────────────
-        socket.on("disconnect", () => {
-            // Remove from both maps if found
-            for (const [id, sid] of farmerSockets.entries()) {
-                if (sid === socket.id) { farmerSockets.delete(id); break; }
+            for (const userId of joinedNotificationRooms) {
+                const room = notificationRooms.get(userId);
+                if (room) {
+                    room.delete(ws);
+                    if (room.size === 0) notificationRooms.delete(userId);
+                }
             }
-            for (const [id, sid] of buyerSockets.entries()) {
-                if (sid === socket.id) { buyerSockets.delete(id); break; }
-            }
-            console.log(`[Socket] Client disconnected: ${socket.id}`);
+            console.log(`[Socket] Client disconnected`);
         });
     });
 
-    return io;
+    return wss;
 };
 
-/** Returns the live IO instance for use in services */
-export const getIO = (): SocketServer => {
-    if (!io) throw new Error("Socket.IO not initialised. Call initSocket() first.");
-    return io;
+export const getIO = (): WebSocketServer => {
+    if (!wss) throw new Error("WebSocket not initialised. Call initSocket() first.");
+    return wss;
 };
 
-/** Returns the socket ID for a registered farmer (or undefined if offline) */
-export const getFarmerSocketId = (farmerId: string): string | undefined =>
-    farmerSockets.get(farmerId);
+export const emitToChatRoom = (sessionId: string, type: string, payload: any) => {
+    const room = chatRooms.get(sessionId);
+    if (!room) return;
+
+    const message = JSON.stringify({ type, payload });
+    room.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+};
+
+export const emitNotification = (userId: string, type: string, payload: any) => {
+    const room = notificationRooms.get(userId);
+    if (!room) {
+        console.log(`[Socket] No active connection for notification to user ${userId}`);
+        return;
+    }
+
+    const message = JSON.stringify({ type, payload });
+    room.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+};
+

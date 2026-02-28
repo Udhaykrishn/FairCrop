@@ -1,18 +1,32 @@
 import { injectable } from "inversify";
 import type { CreateOfferDto, UpdateOfferDto } from "../dtos/offer.dto";
 import { Offer } from "../models/offer.model";
+import { Crop } from "../models/crop.model";
 
 @injectable()
 export class OfferService {
-	async createOffer(data: CreateOfferDto) {
+	async createOffer(data: CreateOfferDto & { buyerId?: string }) {
 		try {
-			const offer = await Offer.findById(data.cropId);
-			if (offer) {
-				throw new Error("Offer already exists");
+			// Find the crop to get the farmer's location and name
+			const crop = await Crop.findById(data.cropId);
+			if (!crop) {
+				throw new Error("Crop not found");
 			}
-			return await Offer.create(data);
+
+			// Map the incoming DTO to the Offer model structure
+			const offerData = {
+				buyerId: data.buyerId,
+				quantity: data.quantity,
+				price: data.price,
+				cropId: data.cropId,
+				farmer_location: typeof crop.location === 'object' ? 'Wayanad' : String(crop.location),
+				buyer_location: data.location || "Unknown District"
+			};
+
+			return await Offer.create(offerData);
 		} catch (error: any) {
-			return error.message;
+			console.log("error is ", error.message);
+			throw error; // Throw so controller handles it
 		}
 	}
 
@@ -27,7 +41,7 @@ export class OfferService {
 			});
 			return updatedOffer;
 		} catch (error: any) {
-			return error.message;
+			throw error;
 		}
 	}
 
@@ -39,7 +53,7 @@ export class OfferService {
 			}
 			return offer;
 		} catch (error: any) {
-			return error.message;
+			throw error;
 		}
 	}
 }

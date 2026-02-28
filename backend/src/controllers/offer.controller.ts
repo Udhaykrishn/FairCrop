@@ -3,25 +3,37 @@ import { inject, injectable } from "inversify";
 import { MESSAGES } from "../constants/messages.constant";
 import { STATUS_CODES } from "../constants/status-codes.constant";
 import type { OfferService } from "../services/offer.service";
+import type { ChatService } from "../services/chat.service";
 import { OFFERS } from "../types/offers.type";
+import { CHAT_TYPES } from "../types/chat.type";
 import { BaseController } from "./base.controller";
 
 @injectable()
 export class OfferController extends BaseController {
-	constructor(@inject(OFFERS.OfferService) private readonly _offerService: OfferService) {
-        super();
-    }
+	constructor(
+		@inject(OFFERS.OfferService) private readonly _offerService: OfferService,
+		@inject(CHAT_TYPES.ChatService) private readonly _chatService: ChatService
+	) {
+		super();
+	}
 
 	async createOffer(req: Request, res: Response) {
 		try {
-			const offer = await this.offerService.createOffer(req.body);
+			const offer = await this._offerService.createOffer(req.body);
+
+
+
 			return this.sendSuccess(
 				res,
 				STATUS_CODES.CREATED,
 				MESSAGES.OFFER_CREATED,
-				offer,
+				{
+					negotiationId: offer._id,
+					...offer.toObject()
+				},
 			);
 		} catch (error: any) {
+			console.error(error.message)
 			return this.sendError(
 				res,
 				STATUS_CODES.INTERNAL_SERVER_ERROR,
@@ -33,7 +45,7 @@ export class OfferController extends BaseController {
 
 	async updateOffer(req: Request, res: Response) {
 		try {
-			const offer = await this.offerService.updateOffer(
+			const offer = await this._offerService.updateOffer(
 				req.params.id as string,
 				req.body,
 			);
@@ -55,7 +67,7 @@ export class OfferController extends BaseController {
 
 	async getOffer(_req: Request, res: Response) {
 		try {
-			const offer = await this.offerService.getOffer();
+			const offer = await this._offerService.getOffer();
 			return this.sendSuccess(
 				res,
 				STATUS_CODES.OK,

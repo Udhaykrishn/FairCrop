@@ -4,6 +4,9 @@ import redisClient from "../config/redis.config";
 import type { SendMessageDto } from "../dtos/chat.dto";
 import { CHAT_TYPES } from "../types/chat.type";
 import type { AiService } from "./ai.service";
+import { emitToChatRoom, emitNotification } from "../socket/socket.gateway";
+import { Crop } from "../models/crop.model";
+import { Offer, IOffer } from "../models/offer.model";
 
 export interface ChatMessage {
     role: "user" | "ai";
@@ -16,15 +19,18 @@ export interface ChatSession {
     messages: ChatMessage[];
     offer_price?: number;
     counter_price?: number;
+    reserve_price?: number;
+    crop?: string;
+    quantity?: number;
+    farmer_location?: string;
+    buyer_district?: string;
 }
 
 @injectable()
 export class ChatService {
     private readonly SESSION_EXPIRY = 60 * 60;
 
-    constructor(
-        @inject(CHAT_TYPES.AiService) private _aiService: AiService
-    ) { }
+    constructor(@inject(CHAT_TYPES.AiService) private _aiService: AiService) { }
 
     public async processMessage(
         dto: SendMessageDto,
@@ -39,12 +45,37 @@ export class ChatService {
             sessionData = JSON.parse(existingSession);
         }
 
-        // Update offer_price or counter_price if they are explicitly sent by user
+        // Fetch negotiation context from DB if not already stored in session
+        if (!sessionData.crop) {
+            try {
+                // The sessionId is the Offer ID (negotiationId) from the new API contract
+                const offer = await Offer.findById(sessionId);
+                let cropId = sessionId; // Fallback
+
+                if (offer) {
+                    cropId = offer.cropId;
+                    sessionData.offer_price = offer.price;
+                    sessionData.buyer_district = offer.buyer_location;
+                }
+
+                const crop = await Crop.findById(cropId);
+                if (crop) {
+                    sessionData.crop = crop.crop;
+                    sessionData.quantity = crop.quantity;
+                    sessionData.reserve_price = crop.reservedPrice;
+                    sessionData.farmer_location = crop.location as unknown as string;
+
+                    if (crop.pendingOffer && !sessionData.offer_price) {
+                        sessionData.offer_price = crop.pendingOffer.offeredPrice;
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching context from models:", err);
+            }
+        }
+
         if (dto.offer_price !== undefined) {
             sessionData.offer_price = dto.offer_price;
-        }
-        if (dto.counter_price !== undefined) {
-            sessionData.counter_price = dto.counter_price;
         }
 
         const userMsg: ChatMessage = {
@@ -54,9 +85,26 @@ export class ChatService {
         };
         sessionData.messages.push(userMsg);
 
-        const aiContext = {
-            offer_price: sessionData.offer_price,
-            counter_price: sessionData.counter_price,
+        // Format request for AI Agent as specified
+        const keralaDistricts = [
+            "Thiruvananthapuram", "Kollam", "Pathanamthitta", "Alappuzha",
+            "Kottayam", "Idukki", "Ernakulam", "Thrissur", "Palakkad",
+            "Malappuram", "Kozhikode", "Wayanad", "Kannur", "Kasaragod",
+        ];
+        const rawLocation = sessionData.farmer_location || "";
+        const matchedDistrict = keralaDistricts.find(d =>
+            rawLocation.toLowerCase().includes(d.toLowerCase())
+        ) || "Palakkad";
+
+        const aiRequest = {
+            buyerMessage: dto.message,
+            buyerDistrict: sessionData.buyer_district || "Ernakulam",
+            crop: sessionData.crop || "Tomato",
+            quantity: sessionData.quantity || 0,
+            farmerLocation: matchedDistrict,
+            reservePrice: sessionData.reserve_price || 0,
+            lastCounterPrice:
+                sessionData.counter_price || sessionData.offer_price || 0,
         };
 
         await redisClient.setex(
@@ -65,23 +113,25 @@ export class ChatService {
             JSON.stringify(sessionData),
         );
 
-        const aiResponseContent = await this._aiService.generateResponse(
-            dto.message,
+        emitToChatRoom(sessionId, "chat:message", {
+            sessionId,
+            message: userMsg,
+            updatedSession: sessionData,
+        });
+
+        const aiResponse = await this._aiService.generateResponse(
+            aiRequest,
             sessionData.messages,
-            aiContext,
         );
 
         try {
-            const match = aiResponseContent.match(
-                /(?:counter_price\s*[:=]\s*|\bcounter\s*[:=]\s*)(\d+(?:\.\d+)?)/i,
-            );
-            if (match?.[1]) {
-                sessionData.counter_price = Number(match[1]);
+            if (aiResponse.decision) {
+                sessionData.counter_price = aiResponse.decision.counterPrice;
             }
 
             const aiMsg: ChatMessage = {
                 role: "ai",
-                content: aiResponseContent,
+                content: aiResponse.chatMessage,
                 timestamp: new Date(),
             };
             sessionData.messages.push(aiMsg);
@@ -91,8 +141,65 @@ export class ChatService {
                 this.SESSION_EXPIRY,
                 JSON.stringify(sessionData),
             );
+
+            emitToChatRoom(sessionId, "chat:message", {
+                sessionId,
+                message: aiMsg,
+                updatedSession: sessionData,
+            });
+
+            if (aiResponse.decision) {
+                const decisionStatus = aiResponse.decision.status;
+                if (decisionStatus === "accepted" || decisionStatus === "rejected") {
+                    // We need to resolve the correct cropId from the negotiation (sessionId)
+                    const offer = await Offer.findById(sessionId).populate<{ cropId: any }>("cropId");
+
+                    if (offer && offer.cropId) {
+                        const crop = await Crop.findById(offer.cropId._id);
+
+                        if (crop && crop.pendingOffer) {
+                            // Update Crop status
+                            crop.pendingOffer.status = decisionStatus === "accepted" ? "confirmed" : "rejected";
+
+                            if (decisionStatus === "accepted") {
+                                // Subtract dealed kg from crop quantity
+                                crop.quantity = Math.max(0, crop.quantity - offer.quantity);
+                                crop.finalPrice = aiResponse.decision.counterPrice;
+
+                                // Mark as sold if no quantity left
+                                if (crop.quantity <= 0) {
+                                    crop.isSold = true;
+                                }
+
+                                console.log(`[Deal] Updated crop ${crop._id}: ${offer.quantity}kg sold, ${crop.quantity}kg remaining`);
+                            }
+                            await crop.save();
+
+                            // Update the specific Offer (negotiation) status in DB
+                            offer.status = decisionStatus === "accepted" ? "accepted" : "rejected";
+                            offer.price = aiResponse.decision.counterPrice;
+                            await offer.save();
+
+                            // Notify Farmer via WebSocket
+                            emitNotification(crop.farmerId, "farmer:notification", {
+                                type: `OFFER_${decisionStatus.toUpperCase()}`,
+                                message: `The agent has ${decisionStatus} a deal for your ${crop.crop} at ₹${aiResponse.decision.counterPrice}`,
+                                data: {
+                                    cropId: crop._id,
+                                    status: decisionStatus,
+                                    price: aiResponse.decision.counterPrice,
+                                    cropName: crop.crop,
+                                    buyerId: offer.buyerId
+                                }
+                            });
+
+                            console.log(`[Notification] Sent ${decisionStatus} alert to farmer ${crop.farmerId}`);
+                        }
+                    }
+                }
+            }
         } catch (err) {
-            console.error("Error saving chat history to Redis:", err);
+            console.error("Error processing session update in Redis:", err);
         }
 
         return { updatedSession: sessionData };
@@ -106,6 +213,53 @@ export class ChatService {
 
         if (existingSession) {
             return JSON.parse(existingSession);
+        }
+
+        // Check if the negotiation exists in the database
+        const offer = await Offer.findById(sessionId);
+        if (offer) {
+            return {
+                sessionId,
+                messages: [],
+                offer_price: offer.price,
+                buyer_district: offer.buyer_location
+            };
+        }
+
+        return null;
+    }
+
+    public async getNegotiationDetails(negotiationId: string) {
+        const redisKey = `chat_session:${negotiationId}`;
+        const existingSession = await redisClient.get(redisKey);
+
+        if (existingSession) {
+            const session = JSON.parse(existingSession);
+            return {
+                status: "active",
+                currentPrice: session.offer_price,
+                counterPrice: session.counter_price,
+                cropDetails: {
+                    crop: session.crop,
+                    quantity: session.quantity,
+                    location: session.farmer_location,
+                },
+            };
+        }
+
+        // Fallback to DB
+        const offer = await Offer.findById(negotiationId).populate<{ cropId: any }>(
+            "cropId",
+        );
+        if (offer) {
+            return {
+                currentPrice: offer.price,
+                cropDetails: {
+                    crop: offer.cropId.crop,
+                    quantity: offer.quantity,
+                    location: offer.farmer_location,
+                },
+            };
         }
 
         return null;

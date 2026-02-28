@@ -1,21 +1,9 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 
 const navItems = [
-    { label: 'Dashboard', icon: DashboardIcon, path: '/buyer/dashboard', activePath: '/buyer/dashboard' },
     { label: 'Crops', icon: CropsIcon, path: '/buyer/crops', activePath: '/buyer/crops' },
     { label: 'Negotiate', icon: NegotiateIcon, path: '/buyer/negotiate', activePath: '/buyer/negotiate' },
 ]
-
-function DashboardIcon() {
-    return (
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="1" y="1" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-            <rect x="10" y="1" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-            <rect x="1" y="10" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-            <rect x="10" y="10" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
-    )
-}
 
 function CropsIcon() {
     return (

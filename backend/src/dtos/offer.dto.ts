@@ -1,20 +1,9 @@
-import { Type } from "class-transformer";
 import {
-	IsDefined,
 	IsInt,
 	IsNumber,
 	IsOptional,
 	IsString,
-	ValidateNested,
 } from "class-validator";
-
-class LocationDto {
-	@IsNumber()
-	lat!: number;
-
-	@IsNumber()
-	lon!: number;
-}
 
 export class CreateOfferDto {
 	@IsString()
@@ -26,10 +15,11 @@ export class CreateOfferDto {
 	@IsNumber()
 	price!: number;
 
-	@IsDefined()
-	@ValidateNested()
-	@Type(() => LocationDto)
-	location!: LocationDto;
+	@IsString()
+	location!: string;
+
+	@IsString()
+	buyerId!: string;
 }
 
 export class UpdateOfferDto {

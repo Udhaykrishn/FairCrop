@@ -14,12 +14,12 @@ export function CropListingPage() {
     const [activeDistrict, setActiveDistrict] = useState('All Districts')
     const [searchQuery, setSearchQuery] = useState('')
     const [bidModalOpen, setBidModalOpen] = useState(false)
-    const [selectedCrop, setSelectedCrop] = useState<any | null>(null)
+    const [selectedCrop, setSelectedCrop] = useState<{ id: string, name: string } | null>(null)
     const [showToast, setShowToast] = useState(false)
 
     const { data: rawCrops, isLoading, isError, error } = useQuery({
         queryKey: ['crops'],
-        queryFn: farmerService.getallCrops,
+        queryFn: farmerService.getAllCrops,
     })
 
     const crops = useMemo(() => {
@@ -28,7 +28,13 @@ export function CropListingPage() {
             id: crop._id,
             name: crop.crop,
             variety: 'Fresh Produce', // Backend doesn't provide variety yet
-            location: `${crop.location.lat.toFixed(2)}, ${crop.location.lon.toFixed(2)}`, // Coordinates as location string
+            location: crop.location
+                ? typeof crop.location === 'string'
+                    ? crop.location
+                    : (crop.location.lat !== undefined && crop.location.lon !== undefined)
+                        ? `${crop.location.lat.toFixed(2)}, ${crop.location.lon.toFixed(2)}`
+                        : 'Invalid location'
+                : 'N/A', // Handle different location formats
             quantity: `${crop.quantity} kg`,
             priceRange: `₹${crop.reservedPrice} - ₹${crop.finalPrice || crop.reservedPrice + 10}`,
             farmer: `Farmer ${crop.farmerId}`,
@@ -50,7 +56,7 @@ export function CropListingPage() {
         })
     }, [crops, activeDistrict, searchQuery])
 
-    const handlePlaceBid = useCallback((crop: any) => {
+    const handlePlaceBid = useCallback((crop: { id: string, name: string }) => {
         setSelectedCrop(crop)
         setBidModalOpen(true)
     }, [])
@@ -187,7 +193,15 @@ export function CropListingPage() {
                 onSubmit={handleBidSubmit}
                 cropName={selectedCrop?.name}
                 cropId={selectedCrop ? String(selectedCrop.id) : undefined}
-                totalQuantity={selectedCrop?.quantity}
+                quantity={rawCrops?.find(c => c._id === selectedCrop?.id)?.quantity}
+                location={
+                    (() => {
+                        const loc = rawCrops?.find(c => c._id === selectedCrop?.id)?.location
+                        if (!loc) return undefined
+                        if (typeof loc === 'string') return loc
+                        return `${loc.lat},${loc.lon}`
+                    })()
+                }
             />
 
             {/* Success Toast */}

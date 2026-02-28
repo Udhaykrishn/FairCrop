@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { offerService } from '@/services/api'
 
 interface PlaceBidModalProps {
     isOpen: boolean
@@ -7,7 +8,8 @@ interface PlaceBidModalProps {
     onSubmit: () => void
     cropName?: string
     cropId?: string
-    totalQuantity?: string
+    quantity?: number
+    location?: string
 }
 
 export function PlaceBidModal({
@@ -16,228 +18,215 @@ export function PlaceBidModal({
     onSubmit,
     cropName = 'Premium Wayanad Pepper',
     cropId = 'crop_001',
-    totalQuantity = '500 kg',
+    quantity = 0,
 }: PlaceBidModalProps) {
     const [district, setDistrict] = useState('')
     const [price, setPrice] = useState('')
+    const [bidQuantity, setBidQuantity] = useState(quantity.toString())
     const [message, setMessage] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const [error, setError] = useState('')
+    const [error, setError] = useState<string | null>(null)
     const navigate = useNavigate()
 
-    if (!isOpen) return null
+    // Sync bidQuantity with quantity prop when modal opens/crop changes
+    useEffect(() => {
+        setBidQuantity(quantity.toString())
+    }, [quantity, isOpen])
 
-    const handleSubmit = async () => {
-        setError('')
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setError(null)
 
-        if (!district) {
-            setError('Please select a delivery district.')
+        const requestedQty = Number(bidQuantity)
+
+        if (!price || Number(price) <= 0) {
+            setError('Please enter a valid price.')
             return
         }
-        if (!price || Number(price) <= 0) {
-            setError('Please enter a valid offer price.')
+
+        if (!bidQuantity || requestedQty <= 0) {
+            setError('Please enter a valid quantity.')
+            return
+        }
+
+        if (requestedQty > quantity) {
+            setError(`Requested quantity cannot exceed available stock (${quantity} kg).`)
             return
         }
 
         setIsSubmitting(true)
         try {
-            const res = await fetch('http://localhost:3000/api/offers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    cropId,
-                    totalQuantity,
-                    district,
-                    offerPrice: Number(price),
-                    message
-                }),
-            })
+            // Ensure location is in the format the backend expects {lat, lon}
+            // even if it was passed as a string from the parent
 
-            const data = await res.json()
-
-            if (!res.ok || !data.success) {
-                setError(data.message || 'Failed to submit offer.')
-                return
+            const payload: any = {
+                cropId,
+                quantity: requestedQty,
+                price: Number(price),
+                location: district || 'Wayanad', // Use district state instead of empty location prop
+                buyerId: '69a18a7638a825ded1332681' // Placeholder buyer ID
             }
 
-            console.log('Offer placed:', data)
+            const res = await offerService.create(payload)
+
+            console.log('Offer placed:', res)
             onSubmit()
             onClose()
 
-            // Redirect to negotiation page
-            const negotiationId = data.data._id || data.data.id
+            // The backend returns { success: true, message: "...", data: { negotiationId, ... } }
+            // offerService.create returns res.data
+            const negotiationId = res.negotiationId || res._id || res.id
+            if (!negotiationId) {
+                console.warn('No negotiation ID returned, staying on page')
+                return
+            }
+
             navigate({
                 to: '/buyer/negotiate',
                 search: { id: negotiationId }
             })
         } catch (err: any) {
-            setError(err.message || 'Network error. Please check if the server is running.')
+            console.error('Bid error:', err)
+            setError(err.message || 'An unexpected error occurred.')
         } finally {
             setIsSubmitting(false)
         }
     }
 
+    if (!isOpen) return null
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+            <div
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+                onClick={onClose}
+            />
 
-            {/* Modal */}
-            <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white px-8 py-7 shadow-2xl">
-                {/* Close button */}
-                <button
-                    onClick={onClose}
-                    className="absolute right-6 top-6 text-gray-400 transition-colors hover:text-gray-600"
-                >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                </button>
-
+            {/* Modal Content */}
+            <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in duration-300">
                 {/* Header */}
-                <h2 className="text-xl font-bold text-gray-900">Place a Bid</h2>
-                <p className="mt-1 text-sm text-gray-500">
-                    Submit your offer to the ONDC agricultural network.
-                </p>
+                <div className="border-b border-gray-100 bg-gray-50/50 px-6 py-5">
+                    <h3 className="text-xl font-bold text-gray-900">Place Your Bid</h3>
+                    <p className="mt-1 text-sm text-gray-500">Negotiating for <span className="font-semibold text-green-600">{cropName}</span></p>
+                </div>
 
-                {/* Form */}
-                <div className="mt-6 space-y-5">
-                    {/* Crop Name + Total Quantity */}
-                    <div className="flex gap-4">
-                        <div className="flex-1">
-                            <label className="mb-1.5 block text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
-                                Crop Name
-                            </label>
-                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-700">
-                                {cropName}
+                <form onSubmit={handleSubmit} className="px-6 py-6">
+                    <div className="space-y-5">
+                        {/* Quantity Info */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                    Available Quantity
+                                </label>
+                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-700 font-medium">
+                                    {quantity} kg
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                    Your Requested Quantity (kg)
+                                </label>
+                                <input
+                                    type="number"
+                                    required
+                                    max={quantity}
+                                    min={1}
+                                    value={bidQuantity}
+                                    onChange={(e) => setBidQuantity(e.target.value)}
+                                    placeholder="Qty in kg"
+                                    className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                                />
                             </div>
                         </div>
-                        <div className="w-32">
-                            <label className="mb-1.5 block text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
-                                Total Quantity
-                            </label>
-                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-700">
-                                {totalQuantity}
+
+                        {/* Additional Info */}
+                        <div className="grid grid-cols-1 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                    District
+                                </label>
+                                <input
+                                    type="text"
+                                    value={district || 'Wayanad'}
+                                    onChange={(e) => setDistrict(e.target.value)}
+                                    placeholder="Enter district"
+                                    className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                                />
                             </div>
                         </div>
-                    </div>
 
-                    {/* Kerala District / Delivery Location */}
-                    <div>
-                        <div className="mb-1.5 flex items-center justify-between">
-                            <label className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
-                                Kerala District / Delivery Location
+                        {/* Price Input */}
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                Your Price (per kg)
                             </label>
-                            <button className="flex items-center gap-1 text-[11px] font-semibold tracking-wider text-green-500 uppercase hover:text-green-600">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <path d="M12 8v8M8 12h8" />
-                                </svg>
-                                Manage Districts
-                            </button>
+                            <div className="relative">
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-semibold text-gray-400">₹</span>
+                                <input
+                                    type="number"
+                                    required
+                                    value={price}
+                                    onChange={(e) => setPrice(e.target.value)}
+                                    placeholder="Enter your offer price"
+                                    className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-8 pr-4 text-sm font-semibold text-gray-900 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                                />
+                            </div>
+                            <p className="text-[10px] text-gray-500">Suggested: ₹{quantity ? '65-75' : '---'}/kg</p>
                         </div>
-                        <div className="relative">
-                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="10" r="3" />
-                                    <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 10-16 0c0 3 2.7 7 8 11.7z" />
-                                </svg>
-                            </span>
-                            <select
-                                value={district}
-                                onChange={(e) => setDistrict(e.target.value)}
-                                className="w-full appearance-none rounded-lg border border-gray-200 bg-white py-2.5 pl-9 pr-10 text-sm text-gray-600 outline-none transition focus:border-green-400 focus:ring-1 focus:ring-green-400"
-                            >
-                                <option value="">Select Delivery District</option>
-                                <option value="thiruvananthapuram">Thiruvananthapuram</option>
-                                <option value="kollam">Kollam</option>
-                                <option value="pathanamthitta">Pathanamthitta</option>
-                                <option value="alappuzha">Alappuzha</option>
-                                <option value="kottayam">Kottayam</option>
-                                <option value="idukki">Idukki</option>
-                                <option value="ernakulam">Ernakulam</option>
-                                <option value="thrissur">Thrissur</option>
-                                <option value="palakkad">Palakkad</option>
-                                <option value="malappuram">Malappuram</option>
-                                <option value="kozhikode">Kozhikode</option>
-                                <option value="wayanad">Wayanad</option>
-                                <option value="kannur">Kannur</option>
-                                <option value="kasaragod">Kasaragod</option>
-                            </select>
-                            <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="6 9 12 15 18 9" />
-                                </svg>
-                            </span>
-                        </div>
-                        <p className="mt-1.5 text-[11px] text-gray-400">
-                            Select where the crop will be delivered for logistics calculation.
-                        </p>
-                    </div>
 
-                    {/* Offer Price Per KG */}
-                    <div>
-                        <label className="mb-1.5 block text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
-                            Offer Price Per KG (₹)
-                        </label>
-                        <div className="relative">
-                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">₹</span>
-                            <input
-                                type="number"
-                                value={price}
-                                onChange={(e) => setPrice(e.target.value)}
-                                placeholder="0.00"
-                                className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-8 pr-4 text-sm text-gray-700 outline-none transition focus:border-green-400 focus:ring-1 focus:ring-green-400"
+                        {/* Message */}
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                Message (Optional)
+                            </label>
+                            <textarea
+                                rows={3}
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
+                                placeholder="Any specific requirements or questions..."
+                                className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-100"
                             />
                         </div>
-                        <p className="mt-1.5 text-[11px] text-gray-400">
-                            Recommended market price: ₹480 - ₹560
-                        </p>
-                    </div>
 
-                    {/* Message to Farmer */}
-                    <div>
-                        <label className="mb-1.5 block text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
-                            Message to Farmer (Optional)
-                        </label>
-                        <textarea
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                            rows={3}
-                            placeholder="Add any specific requirements or logistics notes..."
-                            className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-700 outline-none transition focus:border-green-400 focus:ring-1 focus:ring-green-400"
-                        />
-                    </div>
-                </div>
-
-                {/* Error */}
-                {error && (
-                    <p className="mt-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">{error}</p>
-                )}
-
-                {/* Actions */}
-                <div className="mt-6 flex items-center justify-end gap-3">
-                    <button
-                        onClick={onClose}
-                        disabled={isSubmitting}
-                        className="px-5 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-800 disabled:opacity-50"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={isSubmitting}
-                        className="flex items-center gap-2 rounded-lg bg-green-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-600 disabled:opacity-50"
-                    >
-                        {isSubmitting ? 'Submitting...' : 'Submit Bid'}
-                        {!isSubmitting && (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                                <polygon points="5,3 19,12 5,21" />
-                            </svg>
+                        {error && (
+                            <div className="rounded-lg bg-red-50 p-3 flex items-center gap-2 text-xs text-red-600 border border-red-100 shadow-sm animate-in fade-in slide-in-from-top-1">
+                                <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                {error}
+                            </div>
                         )}
-                    </button>
-                </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="mt-8 flex items-center justify-end gap-3 border-t border-gray-50 pt-6">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-500 transition-colors hover:bg-gray-100"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                    Processing...
+                                </>
+                            ) : (
+                                'Confirm Bid'
+                            )}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     )
