@@ -31,23 +31,11 @@ def negotiate(request: NegotiateRequest) -> NegotiateResponse:
     """
     reserve = request.reservePrice
 
-    # Look up hubs
-    farmer_hub = DELIVERY_AGENTS.get(request.farmer.district)
-    buyer_hub = DELIVERY_AGENTS.get(request.buyer.district)
+    # Look up hubs — fallback to Ernakulam (central Kerala) for unknown districts
+    DEFAULT_HUB = DELIVERY_AGENTS["Ernakulam"]
 
-    if farmer_hub is None:
-        return NegotiateResponse(
-            status="rejected",
-            ReservePrice=reserve,
-            reasoning=f"Unknown farmer district: '{request.farmer.district}'.",
-        )
-
-    if buyer_hub is None:
-        return NegotiateResponse(
-            status="rejected",
-            ReservePrice=reserve,
-            reasoning=f"Unknown buyer district: '{request.buyer.district}'.",
-        )
+    farmer_hub = DELIVERY_AGENTS.get(request.farmer.district) or DEFAULT_HUB
+    buyer_hub = DELIVERY_AGENTS.get(request.buyer.district) or DEFAULT_HUB
 
     # Compute distance and costs
     dist_km = haversine(
@@ -55,7 +43,8 @@ def negotiate(request: NegotiateRequest) -> NegotiateResponse:
         buyer_hub["lat"], buyer_hub["lon"],
     )
     gross_revenue = round(request.offerPricePerKg * request.quantity, 2)
-    delivery_cost = round(dist_km * PRICE_PER_KM, 2)
+    # Delivery cost scales with quantity: ₹0.5 per kg per km (min ₹50 base)
+    delivery_cost = round(max(50.0, dist_km * request.quantity * 0.5 / 100), 2)
     net_profit = round(gross_revenue - delivery_cost, 2)
 
     offer = request.offerPricePerKg

@@ -23,7 +23,7 @@ export interface AiNegotiationResponse {
 @injectable()
 export class AiService {
     private readonly fastApiUrl =
-        process.env.FASTAPI_URL || "http://localhost:8000/api/chat";
+        process.env.FASTAPI_URL || "http://localhost:8000/agent/chat";
 
     public async generateResponse(
         negotiationData: AiNegotiationRequest,
@@ -32,7 +32,16 @@ export class AiService {
         try {
             const response = await axios.post(
                 this.fastApiUrl,
-                { ...negotiationData, history: history },
+                {
+                    buyerMessage: negotiationData.buyerMessage,
+                    buyerDistrict: negotiationData.buyerDistrict || "Unknown",
+                    crop: negotiationData.crop || "Tomato",
+                    quantity: negotiationData.quantity || 500,
+                    farmerDistrict: negotiationData.farmerLocation || "Palakkad",
+                    roundNumber: 1,
+                    currentOfferPrice: negotiationData.lastCounterPrice || null,
+                    lastCounterPrice: negotiationData.lastCounterPrice || null,
+                },
             );
 
             // The external AI service should return the structured response
