@@ -288,10 +288,10 @@ export function FarmerDashboard() {
                                         <span className="text-4xl font-extrabold" style={{ color: '#0ea840' }}>
                                             ₹{listedCrop.reservedPrice.toFixed(2)}
                                         </span>
-                                        <span className="mb-1 text-sm font-medium" style={{ color: BRAND }}>/kg</span>
+                                        <span className="mb-1 text-sm font-medium" style={{ color: BRAND }}></span>
                                     </div>
                                     <p className="mt-2 text-[11px] leading-relaxed text-gray-600">
-                                        Based on 3-day trend analysis, transport costs &amp; nearby mandi demand.
+                                        This price is competitive and tailored for your location.
                                     </p>
                                 </div>
 
@@ -312,7 +312,7 @@ export function FarmerDashboard() {
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
                                         <span className="flex items-center gap-1.5 text-gray-500">
-                                            <TrendingUp size={12} style={{ color: BRAND }} /> Potential Earnings
+                                            <TrendingUp size={12} style={{ color: BRAND }} /> Profit
                                         </span>
                                         <span className="font-bold" style={{ color: BRAND }}>
                                             ₹{(listedCrop.reservedPrice * listedCrop.quantity).toLocaleString('en-IN')}
