@@ -3,5 +3,5 @@ node_modules
 .env
 dist/
 lib
-# Snyk Security Extension 
+# Snyk Security Exte
 .agent/rules/snyk_rules.md
