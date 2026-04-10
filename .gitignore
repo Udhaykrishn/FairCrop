@@ -3,5 +3,5 @@ node_modules
 .env
 dist/
 lib
-# Snyk Security Extension - AI Rules (auto-generated)
+# Snyk Security Extension - AI Rules (auto-gener
 .agent/rules/snyk_rules.md
