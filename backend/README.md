@@ -30,7 +30,7 @@ npm run dev
 yarn dev
 ```
 
-To build and run in producti
+To build and run in productio
 ```bash
 npm run build
 npm start
