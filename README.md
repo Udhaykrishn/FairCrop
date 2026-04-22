@@ -1,5 +1,5 @@
 
-### Team Name - Code Legionn 
+### Team Name - Code Legion
 
 ### Team Members
 - Muhammad Fuvad Sinin M
